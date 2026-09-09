@@ -90,6 +90,11 @@ export default function FotoPage() {
 
   async function analyze() {
     if (!file) return;
+    if (!hasCredits()) {
+      setError("Sem créditos. Recarregue para continuar. / Plus de crédits. Recharge pour continuer.");
+      setStep("error");
+      return;
+    }
     setStep("analyzing");
     setError("");
     try {
@@ -98,6 +103,7 @@ export default function FotoPage() {
       const res = await fetch("/api/analyze-photo", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao analisar.");
+      deductCredit();
       setAnalysis(data.analysis);
       // Si confiance basse, on n'affiche PAS le chiffre par défaut — l'user doit mesurer.
       const conf = data.analysis.tamanho_confianca;
