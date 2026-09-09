@@ -35,6 +35,27 @@ const CONFIANCA_LABEL: Record<PhotoAnalysis["tamanho_confianca"], string> = {
   alta:  "estimativa boa",
 };
 
+// Resize à 2000px + JPEG q0.85. Une photo iPhone de 12 MB tombe à ~500 KB
+// sans perte visible pour l'analyse Vision, et évite la limite backend 8 MB.
+async function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise<File> {
+  if (file.size <= 1_500_000 && file.type !== "image/heic" && file.type !== "image/heif") return file;
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+  const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, "image/jpeg", quality));
+  if (!blob) return file;
+  const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+  return new File([blob], name, { type: "image/jpeg" });
+}
+
 export default function FotoPage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,14 +99,20 @@ export default function FotoPage() {
     inputRef.current?.click();
   }
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFile(f);
-    setPreviewUrl(URL.createObjectURL(f));
-    setStep("preview");
     setError("");
     setAnalysis(null);
+    try {
+      const compressed = await compressImage(f);
+      setFile(compressed);
+      setPreviewUrl(URL.createObjectURL(compressed));
+      setStep("preview");
+    } catch {
+      setError("Formato não suportado. Escolha JPEG ou PNG. / Format non pris en charge, choisis JPEG ou PNG.");
+      setStep("error");
+    }
   }
 
   async function analyze() {
