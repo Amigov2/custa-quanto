@@ -3,38 +3,84 @@
 
 // Resize à 2000px + JPEG q0.85. Une photo iPhone de 12 MB tombe à ~500 KB
 // sans perte visible pour l analyse Vision, et évite la limite backend 8 MB.
+//
+// Robustesse iOS : HEIC/HEIF anciens peuvent faire échouer createImageBitmap.
+// On tente un fallback via <img> + canvas si le premier chemin plante.
 export async function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise<File> {
+  // Fichier déjà petit ET pas HEIC → on renvoie tel quel.
   if (file.size <= 1_500_000 && file.type !== "image/heic" && file.type !== "image/heif") return file;
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
+
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
+
+  // Chemin principal : createImageBitmap (rapide, moderne).
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+  } catch {
+    // Fallback : <img> + FileReader (fonctionne sur HEIC ancien via Safari iOS).
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("FileReader failed"));
+      reader.readAsDataURL(file);
+    });
+    const img: HTMLImageElement = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Image decode failed"));
+      el.src = dataUrl;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  }
+
   const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, "image/jpeg", quality));
-  if (!blob) return file;
+  if (!blob) throw new Error("Canvas toBlob failed");
   const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
   return new File([blob], name, { type: "image/jpeg" });
 }
 
 // Vignette 512px JPEG q0.75 → ~30-60 KB en base64 dans localStorage.
+// Même robustesse iOS que compressImage : fallback FileReader+Image si createImageBitmap échoue.
 export async function makeThumbnail(file: File, maxDim = 512, quality = 0.75): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas ctx null");
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+  } catch {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("FileReader failed"));
+      reader.readAsDataURL(file);
+    });
+    const img: HTMLImageElement = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Image decode failed"));
+      el.src = dataUrl;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  }
+
   return canvas.toDataURL("image/jpeg", quality);
 }
 

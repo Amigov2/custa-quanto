@@ -23,7 +23,7 @@ export default function HomePage() {
   const [ready, setReady] = useState(false);
 
   // Input hybride
-  const MAX_PHOTOS = 5;
+  const MAX_PHOTOS = 10;
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -75,22 +75,45 @@ export default function HomePage() {
     setError("");
     const remaining = MAX_PHOTOS - files.length;
     if (remaining <= 0) {
-      setError(`Máximo ${MAX_PHOTOS} fotos por análise.`);
+      setError(`Máximo ${MAX_PHOTOS} fotos por análise. Retire uma para adicionar outra.`);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+    const dropped = Math.max(0, selected.length - remaining);
     const toAdd = selected.slice(0, remaining);
-    try {
-      // Compression plus agressive quand multi (limiter le payload total).
-      const compressed = await Promise.all(
-        toAdd.map(f => compressImage(f, files.length > 0 ? 1500 : 2000, 0.8)),
-      );
-      const urls = compressed.map(f => URL.createObjectURL(f));
+
+    // Compression + création de preview URL par photo. On tolère qu une photo échoue
+    // (ex : HEIC ancien iOS non décodable) sans planter tout le lot.
+    const compressed: File[] = [];
+    const urls: string[] = [];
+    let failedCount = 0;
+    for (const f of toAdd) {
+      try {
+        const c = await compressImage(f, files.length + compressed.length > 0 ? 1500 : 2000, 0.8);
+        const url = URL.createObjectURL(c);
+        compressed.push(c);
+        urls.push(url);
+      } catch (err) {
+        console.warn("Falha ao processar foto:", f.name, err);
+        failedCount++;
+      }
+    }
+
+    if (compressed.length > 0) {
       setFiles(prev => [...prev, ...compressed]);
       setPreviewUrls(prev => [...prev, ...urls]);
-    } catch {
-      setError("Formato não suportado. Escolha JPEG ou PNG.");
     }
-    // Reset l'input pour permettre de re-sélectionner la même photo si retirée puis re-choisie.
+
+    // Messages selon les cas — priorité aux échecs, puis au trop-plein.
+    if (failedCount > 0 && compressed.length === 0) {
+      setError(`Não consegui ler ${failedCount === 1 ? "essa foto" : "essas fotos"}. Tente formato JPEG ou PNG.`);
+    } else if (failedCount > 0) {
+      setError(`${failedCount} foto${failedCount > 1 ? "s" : ""} não pôde ser lida (formato desconhecido).`);
+    } else if (dropped > 0) {
+      setError(`Você selecionou ${selected.length} fotos, mas o máximo é ${MAX_PHOTOS} por análise. ${dropped} foram ignoradas.`);
+    }
+
+    // Reset l input pour permettre de re-sélectionner la même photo si retirée puis re-choisie.
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
