@@ -139,7 +139,7 @@ ${AVAILABLE_MACRO_IDS.join(", ")}
 observacoes :
 - Sempre inclua uma advertência sobre a necessidade de medir com trena/metro para ter o tamanho preciso.`;
 
-export async function analyzePhoto(imageBase64: string, mediaType: string, scope?: string): Promise<PhotoAnalysis> {
+export async function analyzePhoto(imageBase64: string, mediaType: string, scope?: string, learnings?: string): Promise<PhotoAnalysis> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY não configurada. Adicione em .env.local.");
@@ -172,6 +172,12 @@ Regras :
 4) Se não há pergunta clara, NÃO preencha "resposta_ao_usuario" (deixe undefined).`
     : "Analise esta foto e retorne o JSON conforme a estrutura definida.";
 
+  // Injecte les apprentissages accumulés du user (corrections passées) si présents.
+  // Ce texte a été résumé côté client à partir des LearningRecord bruts.
+  const userTextWithLearnings = learnings && learnings.trim()
+    ? userText + learnings
+    : userText;
+
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -197,7 +203,7 @@ Regras :
             },
             {
               type: "text",
-              text: userText,
+              text: userTextWithLearnings,
             },
           ],
         },

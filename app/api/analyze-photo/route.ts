@@ -30,7 +30,10 @@ export async function POST(req: NextRequest) {
     const rawScope = form.get("scope");
     const scope = typeof rawScope === "string" ? rawScope.slice(0, 500) : undefined;
 
-    const analysis = await analyzePhoto(base64, mediaType, scope);
+    const rawLearnings = form.get("learnings");
+    const learnings = typeof rawLearnings === "string" ? rawLearnings.slice(0, 2000) : undefined;
+
+    const analysis = await analyzePhoto(base64, mediaType, scope, learnings);
     return NextResponse.json({ analysis });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

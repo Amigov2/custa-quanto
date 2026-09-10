@@ -10,6 +10,7 @@ import { loadChantiers } from "@/lib/storage";
 import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
 import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
+import { saveLearning, summarizeLearnings, countLearnings } from "@/lib/learnings";
 import CreditsBadge from "@/app/components/CreditsBadge";
 
 type Step = "idle" | "preview" | "analyzing" | "result" | "error";
@@ -103,6 +104,7 @@ export default function FotoPage() {
   const [drafts, setDrafts] = useState<PhotoRecord[]>([]);
   const [overrideAmbiente, setOverrideAmbiente] = useState<PhotoAnalysis["ambiente"] | null>(null);
   const [ambientePickerOpen, setAmbientePickerOpen] = useState<boolean>(false);
+  const [learningsCount, setLearningsCount] = useState<number>(0);
 
   // Nettoie l'ancienne clé "cq_last_photo_analysis" (avant migration vers cq_photos).
   // Puis charge les brouillons (photos analysées mais non rattachées à un chantier)
@@ -110,7 +112,11 @@ export default function FotoPage() {
   useEffect(() => {
     localStorage.removeItem("cq_last_photo_analysis");
     setDrafts(getDrafts());
-    return onPhotosChange(() => setDrafts(getDrafts()));
+    setLearningsCount(countLearnings());
+    return onPhotosChange(() => {
+      setDrafts(getDrafts());
+      setLearningsCount(countLearnings());
+    });
   }, []);
 
   function openDraft(rec: PhotoRecord) {
@@ -164,6 +170,9 @@ export default function FotoPage() {
       const form = new FormData();
       form.append("photo", file);
       if (userScope.trim()) form.append("scope", userScope.trim());
+      // Injecte les apprentissages accumulés (corrections passées) pour calibrer l'IA sur cet user.
+      const learnings = summarizeLearnings();
+      if (learnings) form.append("learnings", learnings);
       const res = await fetch("/api/analyze-photo", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao analisar.");
@@ -190,8 +199,16 @@ export default function FotoPage() {
           userScope: userScope.trim(),
         });
         setPhotoId(saved.id);
+        // Learning : le scope textuel exprime ce qui compte pour l'user. On log
+        // pour identifier des mots-clés récurrents (marques favorites, styles, contraintes).
+        if (userScope.trim().length > 5) {
+          saveLearning({
+            type: "scope",
+            context: { ambienteDetected: data.analysis.ambiente },
+            correction: { scopeText: userScope.trim() },
+          });
+        }
       } catch (saveErr) {
-        // localStorage plein ou indisponible : on log mais on ne bloque pas l'affichage du résultat.
         console.error("Photo save failed:", saveErr);
       }
       setStep("result");
@@ -330,6 +347,13 @@ export default function FotoPage() {
             <p className="text-[11px] text-[color:var(--color-muted)] text-center mt-4 leading-snug">
               💡 Tire com boa iluminação, mostrando o máximo do cômodo. Inclua uma porta ou móvel se possível — ajuda para estimar tamanho.
             </p>
+
+            {learningsCount >= 3 && (
+              <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[color:var(--color-accent)]">
+                <span>🧠</span>
+                <span>A IA aprendeu com suas {learningsCount} correções anteriores</span>
+              </div>
+            )}
 
             {drafts.length > 0 && !targetChantierId && (
               <div className="mt-8">
@@ -521,6 +545,14 @@ export default function FotoPage() {
                               key={key}
                               type="button"
                               onClick={() => {
+                                // Learning : si l'user override, on log la correction pour calibrer les futures analyses.
+                                if (key !== analysis.ambiente) {
+                                  saveLearning({
+                                    type: "ambiente",
+                                    context: { ambienteDetected: analysis.ambiente },
+                                    correction: { ambienteCorrected: key },
+                                  });
+                                }
                                 setOverrideAmbiente(key === analysis.ambiente ? null : key);
                                 setAmbientePickerOpen(false);
                               }}
@@ -592,7 +624,19 @@ export default function FotoPage() {
 
               {editedM2 > 0 && !confirmedM2 ? (
                 <button
-                  onClick={() => setConfirmedM2(true)}
+                  onClick={() => {
+                    // Learning : si le m² confirmé diffère significativement (>15%) de l'estimation IA,
+                    // on log pour ajuster les futures estimations dans le même sens.
+                    const detected = analysis.tamanho_estimado_m2;
+                    if (detected > 0 && Math.abs(editedM2 - detected) / detected > 0.15) {
+                      saveLearning({
+                        type: "m2_delta",
+                        context: { m2Detected: detected, ambienteDetected: analysis.ambiente },
+                        correction: { m2Corrected: editedM2 },
+                      });
+                    }
+                    setConfirmedM2(true);
+                  }}
                   className="w-full btn-primary rounded-xl py-2.5 text-[13px] font-semibold"
                 >
                   ✓ Confirmar {editedM2} m² (medido com trena)
