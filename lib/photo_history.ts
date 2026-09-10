@@ -3,6 +3,7 @@
 // Stockage localStorage. Vignettes 512px WebP q0.7 ~30 KB → ~150 photos possibles avant saturation.
 
 import type { PhotoAnalysis } from "./vision";
+import type { ChatMessage } from "./chat";
 
 const KEY = "cq_photos";
 
@@ -14,6 +15,7 @@ export type PhotoRecord = {
   analysis: PhotoAnalysis;
   userScope: string;            // texte libre saisi par l'user
   label?: string;               // ex: "Antes", "Após demolição", "Cerâmica posta"
+  chatHistory?: ChatMessage[]; // conversation IA persistée (V2 : base pour l'agent contremaitre)
 };
 
 export function loadPhotos(): PhotoRecord[] {
@@ -55,6 +57,18 @@ export function deletePhoto(id: string): void {
 
 export function attachToChantier(photoId: string, chantierId: string): void {
   updatePhoto(photoId, { chantierId });
+}
+
+// Ajoute un ou plusieurs messages à l'historique de conversation d'une photo.
+// Utilisé par le chat IA pour reprendre la conversation à chaque ouverture.
+export function appendChatMessages(photoId: string, msgs: ChatMessage[]): void {
+  const list = loadPhotos();
+  const idx = list.findIndex(p => p.id === photoId);
+  if (idx < 0) return;
+  const existing = list[idx].chatHistory || [];
+  list[idx] = { ...list[idx], chatHistory: [...existing, ...msgs] };
+  localStorage.setItem(KEY, JSON.stringify(list));
+  window.dispatchEvent(new CustomEvent("cq-photos-change"));
 }
 
 export function getPhotosByChantier(chantierId: string): PhotoRecord[] {

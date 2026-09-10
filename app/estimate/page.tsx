@@ -8,7 +8,8 @@ import { estimateChantier, estimatePost, explainDays, fmt, fmtBRL, fmtPct, midOf
 import { getService, SERVICES } from "@/lib/sinapi";
 import { getMaterials, type Finish } from "@/lib/materials";
 import { loadChantiers, saveChantier } from "@/lib/storage";
-import { attachToChantier } from "@/lib/photo_history";
+import { attachToChantier, getPhotosByChantier } from "@/lib/photo_history";
+import { buildShareUrl } from "@/lib/share_encoding";
 import type { ServicePost } from "@/lib/types";
 import { PHASES, getPhaseForService, type PhaseId } from "@/lib/phases";
 import { detectAlerts, compareWithOrcamento, verdictLabel, type ComparisonResult } from "@/lib/alerts";
@@ -40,6 +41,8 @@ export default function EstimatePage() {
   const [expandedPosts, setExpandedPosts] = useState<Set<number>>(new Set());
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [chantierName, setChantierName] = useState("");
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
 
@@ -147,11 +150,17 @@ export default function EstimatePage() {
           </Link>
           <p className="text-[15px] font-semibold">{editId ? (chantierName || "Chantier") : "Novo chantier"}</p>
           {step === "detail" ? (
-            <button onClick={() => window.print()} className="text-[color:var(--color-muted)] hover:text-[color:var(--color-ink)] transition p-1" aria-label="Imprimir">
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="text-[color:var(--color-accent)] hover:opacity-80 transition p-1 flex items-center gap-1"
+              aria-label="Partilhar"
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
             </button>
           ) : (
@@ -264,6 +273,19 @@ export default function EstimatePage() {
         <ComparisonResultModal
           result={comparisonResult}
           onClose={() => setComparisonResult(null)}
+        />
+      )}
+
+      {showShareModal && (
+        <ShareModal
+          chantierName={chantierName || (macro ? macro.name : "Chantier")}
+          posts={posts.filter(p => p.enabled !== false).map(p => ({ serviceId: p.serviceId, surface: p.surface, modifiers: p.modifiers }))}
+          finish={finish}
+          total={chantierEst.total}
+          editId={editId}
+          copied={shareCopied}
+          setCopied={setShareCopied}
+          onClose={() => setShowShareModal(false)}
         />
       )}
     </div>
@@ -1294,6 +1316,136 @@ function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; 
         </div>
         <div className="border-t border-[color:var(--color-line)] p-3">
           <button onClick={onClose} className="w-full py-3 text-[15px] font-semibold text-[color:var(--color-accent)]">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Modal de partage : lien public, WhatsApp, impression PDF
+// ============================================================
+function ShareModal({
+  chantierName, posts, finish, total, editId, copied, setCopied, onClose,
+}: {
+  chantierName: string;
+  posts: ServicePost[];
+  finish: Finish;
+  total: [number, number];
+  editId: string | null;
+  copied: boolean;
+  setCopied: (b: boolean) => void;
+  onClose: () => void;
+}) {
+  // Construit un Chantier temporaire pour l'encoder — même sans sauvegarde préalable,
+  // le lien contient toutes les data (pas besoin de backend).
+  const shareUrl = useMemo(() => {
+    const chantierForShare: Chantier = {
+      id: editId || `ch_temp_${Date.now()}`,
+      name: chantierName,
+      posts,
+      finish,
+      total,
+      createdAt: new Date().toISOString(),
+    };
+    // Si le chantier est sauvegardé, on prend la thumbnail de la 1re photo attachée.
+    let thumb: string | undefined;
+    if (editId) {
+      const photos = getPhotosByChantier(editId);
+      if (photos.length > 0) thumb = photos[0].thumbnail;
+    }
+    return buildShareUrl(chantierForShare, thumb);
+  }, [chantierName, posts, finish, total, editId]);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert("Não foi possível copiar. Selecione o link manualmente.");
+    }
+  }
+
+  function handleWhatsApp() {
+    const mid = midOf(total);
+    const nPosts = posts.length;
+    const text = [
+      `📋 *${chantierName}*`,
+      `${nPosts} serviço${nPosts > 1 ? "s" : ""} · ${fmtBRL(mid)}`,
+      ``,
+      `Ver detalhes : ${shareUrl}`,
+      ``,
+      `_Feito com Custa Quanto — estimador RJ_`,
+    ].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  }
+
+  function handlePrint() {
+    onClose();
+    setTimeout(() => window.print(), 100);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center px-6 pb-6 sm:pb-0">
+      <div className="bg-white w-full max-w-sm rounded-3xl overflow-hidden">
+        <div className="p-6 text-center">
+          <div className="w-12 h-12 mx-auto rounded-full bg-[color:var(--color-accent-soft)] flex items-center justify-center mb-3">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth={2}>
+              <circle cx="18" cy="5" r="3" />
+              <circle cx="6" cy="12" r="3" />
+              <circle cx="18" cy="19" r="3" />
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+            </svg>
+          </div>
+          <p className="text-[17px] font-semibold">Partilhar orçamento</p>
+          <p className="text-[13px] text-[color:var(--color-muted)] mt-1">
+            Lien público, sans compte utilisateur
+          </p>
+        </div>
+
+        <div className="px-5 pb-5 space-y-2">
+          <button
+            onClick={handleCopy}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] transition text-left"
+          >
+            <span className="accordion-icon bg-[color:var(--color-accent-soft)]">🔗</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold">{copied ? "✓ Link copiado !" : "Copiar link"}</p>
+              <p className="text-[11px] text-[color:var(--color-muted)] truncate">
+                Envie por onde quiser
+              </p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleWhatsApp}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-[color:var(--color-line)] hover:border-[#25D366] transition text-left"
+          >
+            <span className="accordion-icon bg-[#25D366]/10">💬</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold">Partilhar por WhatsApp</p>
+              <p className="text-[11px] text-[color:var(--color-muted)]">Mensagem pronta + link</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] transition text-left"
+          >
+            <span className="accordion-icon bg-[color:var(--color-bg-2)]">🖨</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold">Imprimir / Salvar PDF</p>
+              <p className="text-[11px] text-[color:var(--color-muted)]">Exportar em PDF via impressora</p>
+            </div>
+          </button>
+        </div>
+
+        <div className="border-t border-[color:var(--color-line)]">
+          <button onClick={onClose} className="w-full py-3.5 text-[15px] text-[color:var(--color-muted)] hover:text-[color:var(--color-ink)] transition">
             Fechar
           </button>
         </div>

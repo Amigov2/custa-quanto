@@ -8,7 +8,7 @@ import type { PhotoAnalysis } from "@/lib/vision";
 import { analysisContext, type ChatMessage } from "@/lib/chat";
 import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
-import { savePhoto, getDrafts, deletePhoto, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
+import { savePhoto, getDrafts, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import CreditsBadge from "@/app/components/CreditsBadge";
 
 type Step = "idle" | "preview" | "analyzing" | "result" | "error";
@@ -57,8 +57,9 @@ async function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise
   return new File([blob], name, { type: "image/jpeg" });
 }
 
-// Vignette 512px WebP q0.7 → ~20-40 KB en base64 dans localStorage.
-async function makeThumbnail(file: File, maxDim = 512, quality = 0.7): Promise<string> {
+// Vignette 512px JPEG q0.75 → ~30-60 KB en base64 dans localStorage.
+// JPEG plutôt que WebP pour compatibilité universelle (iOS Safari ancien).
+async function makeThumbnail(file: File, maxDim = 512, quality = 0.75): Promise<string> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
@@ -70,8 +71,16 @@ async function makeThumbnail(file: File, maxDim = 512, quality = 0.7): Promise<s
   if (!ctx) throw new Error("Canvas ctx null");
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
-  return canvas.toDataURL("image/webp", quality);
+  return canvas.toDataURL("image/jpeg", quality);
 }
+
+// Placeholder gris utilisé si la génération de vignette échoue — la photo reste sauvegardée.
+// URL-encoding plutôt que btoa car btoa ne gère pas les caractères hors Latin1 (emojis).
+const PLACEHOLDER_THUMB =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#e5e5e7"/><path d="M12 15h4l1.5-2h5L24 15h4v10H12V15z" fill="none" stroke="#86868b" stroke-width="1.5"/><circle cx="20" cy="20" r="3" fill="none" stroke="#86868b" stroke-width="1.5"/></svg>',
+  );
 
 export default function FotoPage() {
   const router = useRouter();
@@ -163,12 +172,16 @@ export default function FotoPage() {
       const conf = data.analysis.tamanho_confianca;
       setEditedM2(conf === "alta" ? data.analysis.tamanho_estimado_m2 : 0);
       setConfirmedM2(false);
-      // Sauve l'analyse dans l'historique.
-      // Si un chantierId est passé en URL, la photo est directement rattachée à ce chantier
-      // (mode "documenter l'avancement d'un chantier existant") et on redirige vers /contas.
-      // Sinon la photo est un brouillon jusqu'à ce qu'un chantier soit créé depuis elle.
+      // Sauve l'analyse dans l'historique. La vignette est optionnelle : si sa génération
+      // échoue (Safari ancien, format exotique), on tombe sur un placeholder — l'analyse
+      // et le scope sont l'essentiel et doivent être persistés dans tous les cas.
+      let thumbnail = PLACEHOLDER_THUMB;
       try {
-        const thumbnail = await makeThumbnail(file);
+        thumbnail = await makeThumbnail(file);
+      } catch (thumbErr) {
+        console.warn("Thumbnail generation failed, using placeholder:", thumbErr);
+      }
+      try {
         const saved = savePhoto({
           chantierId: targetChantierId,
           thumbnail,
@@ -176,8 +189,9 @@ export default function FotoPage() {
           userScope: userScope.trim(),
         });
         setPhotoId(saved.id);
-      } catch (thumbErr) {
-        console.warn("Thumbnail generation failed:", thumbErr);
+      } catch (saveErr) {
+        // localStorage plein ou indisponible : on log mais on ne bloque pas l'affichage du résultat.
+        console.error("Photo save failed:", saveErr);
       }
       setStep("result");
       if (targetChantierId) {
@@ -327,17 +341,25 @@ export default function FotoPage() {
                     const amb = AMBIENTE_LABEL[ambienteKey];
                     const date = new Date(rec.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
                     const nItens = rec.analysis.itens_detectados?.length ?? 0;
+                    const nMessages = rec.chatHistory?.length ?? 0;
                     return (
                       <button
                         key={rec.id}
                         onClick={() => openDraft(rec)}
                         className="w-full flex items-center gap-3 p-2 rounded-2xl border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] transition text-left"
                       >
-                        <img
-                          src={rec.thumbnail}
-                          alt=""
-                          className="w-14 h-14 rounded-xl object-cover shrink-0 bg-[color:var(--color-bg-2)]"
-                        />
+                        <div className="relative shrink-0">
+                          <img
+                            src={rec.thumbnail}
+                            alt=""
+                            className="w-14 h-14 rounded-xl object-cover bg-[color:var(--color-bg-2)]"
+                          />
+                          {nMessages > 0 && (
+                            <span className="absolute -bottom-1 -right-1 bg-[color:var(--color-accent)] text-white text-[9px] font-bold rounded-full px-1.5 py-0.5 flex items-center gap-0.5">
+                              💬 {Math.ceil(nMessages / 2)}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-[13px] font-semibold truncate">
                             {amb.emoji} {amb.pt} · {rec.analysis.tamanho_estimado_m2} m²
@@ -427,6 +449,21 @@ export default function FotoPage() {
             {previewUrl && (
               <div className="rounded-2xl overflow-hidden border border-[color:var(--color-line)]">
                 <img src={previewUrl} alt="Foto analisada" className="w-full h-auto" />
+              </div>
+            )}
+
+            {/* Confirmation de sauvegarde — visible uniquement en mode brouillon (pas en mode chantierId qui redirige) */}
+            {photoId && !targetChantierId && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-[#34c759]/10 text-[#34c759] text-[12px] font-medium">
+                <span>✓</span>
+                <span>Salvo em Rascunhos</span>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="ml-auto text-[color:var(--color-accent)] text-[11px] font-semibold"
+                >
+                  Analisar outra foto →
+                </button>
               </div>
             )}
 
@@ -885,6 +922,7 @@ export default function FotoPage() {
       {chatOpen && analysis && (
         <ChatModal
           analysis={analysis}
+          photoId={photoId}
           onClose={() => setChatOpen(false)}
         />
       )}
@@ -892,8 +930,18 @@ export default function FotoPage() {
   );
 }
 
-function ChatModal({ analysis, onClose }: { analysis: PhotoAnalysis; onClose: () => void }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; photoId: string | null; onClose: () => void }) {
+  // Reprise auto : si photoId fourni, on charge l'historique persisté au mount.
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (!photoId) return [];
+    if (typeof window === "undefined") return [];
+    try {
+      const list = JSON.parse(localStorage.getItem("cq_photos") || "[]") as PhotoRecord[];
+      return list.find(p => p.id === photoId)?.chatHistory || [];
+    } catch {
+      return [];
+    }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
@@ -914,7 +962,8 @@ function ChatModal({ analysis, onClose }: { analysis: PhotoAnalysis; onClose: ()
     }
 
     setErr("");
-    const newHistory: ChatMessage[] = [...messages, { role: "user", content: text }];
+    const userMsg: ChatMessage = { role: "user", content: text };
+    const newHistory: ChatMessage[] = [...messages, userMsg];
     setMessages(newHistory);
     setInput("");
     setLoading(true);
@@ -928,7 +977,10 @@ function ChatModal({ analysis, onClose }: { analysis: PhotoAnalysis; onClose: ()
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro na resposta.");
-      setMessages([...newHistory, { role: "assistant", content: data.reply }]);
+      const assistantMsg: ChatMessage = { role: "assistant", content: data.reply };
+      setMessages([...newHistory, assistantMsg]);
+      // Persiste la paire (user + assistant) sur la photo pour reprise ultérieure.
+      if (photoId) appendChatMessages(photoId, [userMsg, assistantMsg]);
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       setErr(m);

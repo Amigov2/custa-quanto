@@ -212,10 +212,16 @@ export default function ContasPage() {
             <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-6 px-6 pb-1">
               {photos.map(p => {
                 const date = new Date(p.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+                const nExchanges = Math.ceil((p.chatHistory?.length ?? 0) / 2);
                 return (
                   <div key={p.id} className="shrink-0 w-28">
-                    <div className="rounded-2xl overflow-hidden border border-[color:var(--color-line)] aspect-square bg-[color:var(--color-bg-2)]">
+                    <div className="relative rounded-2xl overflow-hidden border border-[color:var(--color-line)] aspect-square bg-[color:var(--color-bg-2)]">
                       <img src={p.thumbnail} alt="" className="w-full h-full object-cover" />
+                      {nExchanges > 0 && (
+                        <span className="absolute top-1.5 right-1.5 bg-[color:var(--color-accent)] text-white text-[9px] font-bold rounded-full px-1.5 py-0.5 flex items-center gap-0.5 shadow">
+                          💬 {nExchanges}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] font-medium mt-1.5 truncate">{p.label || "Foto"}</p>
                     <p className="text-[10px] text-[color:var(--color-muted)] num">{date}</p>
