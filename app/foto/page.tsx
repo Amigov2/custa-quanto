@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMacro, getMacroFr } from "@/lib/macros";
@@ -85,7 +85,16 @@ const PLACEHOLDER_THUMB =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#e5e5e7"/><path d="M12 15h4l1.5-2h5L24 15h4v10H12V15z" fill="none" stroke="#86868b" stroke-width="1.5"/><circle cx="20" cy="20" r="3" fill="none" stroke="#86868b" stroke-width="1.5"/></svg>',
   );
 
+// useSearchParams doit être dans un enfant de Suspense pour le prerendering Next 16.
 export default function FotoPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[13px] text-[color:var(--color-muted)]">Carregando…</div>}>
+      <FotoPageInner />
+    </Suspense>
+  );
+}
+
+function FotoPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetChantierId = searchParams.get("chantierId");

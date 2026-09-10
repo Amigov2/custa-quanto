@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MACROS, MACRO_GROUPS, getMacro, getMacroFr, getMacrosByGroup, macroToServicePosts, type Macro } from "@/lib/macros";
@@ -10,7 +10,7 @@ import { getMaterials, type Finish } from "@/lib/materials";
 import { loadChantiers, saveChantier } from "@/lib/storage";
 import { attachToChantier, getPhotosByChantier } from "@/lib/photo_history";
 import { buildShareUrl } from "@/lib/share_encoding";
-import type { ServicePost } from "@/lib/types";
+import type { ServicePost, Chantier } from "@/lib/types";
 import { PHASES, getPhaseForService, type PhaseId } from "@/lib/phases";
 import { detectAlerts, compareWithOrcamento, verdictLabel, type ComparisonResult } from "@/lib/alerts";
 
@@ -22,7 +22,17 @@ const FINISH_LABELS: { id: Finish; label: string }[] = [
   { id: "premium",   label: "Premium" },
 ];
 
+// useSearchParams doit être dans un composant enfant d'un Suspense boundary
+// pour que le prerendering Next.js 16 fonctionne en prod.
 export default function EstimatePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[13px] text-[color:var(--color-muted)]">Carregando…</div>}>
+      <EstimatePageInner />
+    </Suspense>
+  );
+}
+
+function EstimatePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -189,7 +199,7 @@ export default function EstimatePage() {
         )}
         {step === "detail" && (
           <Detail
-            macro={macro}
+            macro={macro ?? null}
             chantierName={chantierName}
             posts={posts}
             finish={finish}
