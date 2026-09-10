@@ -36,10 +36,20 @@ export async function compressImage(file: File, maxDim = 2000, quality = 0.85): 
       el.onerror = () => reject(new Error("Image decode failed"));
       el.src = dataUrl;
     });
+    // iOS peut résoudre onload sans avoir vraiment décodé les dimensions (HEIC exotique).
+    // On refuse un canvas 0×0 qui ferait planter drawImage → toBlob avec l'erreur pattern.
+    if (!img.naturalWidth || !img.naturalHeight) {
+      throw new Error("Unable to decode image dimensions (possibly unsupported HEIC).");
+    }
     const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
-    canvas.width = Math.round(img.naturalWidth * scale);
-    canvas.height = Math.round(img.naturalHeight * scale);
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  }
+
+  // Défense contre canvas dégénéré : si width/height a été mis à 0, on abandonne proprement.
+  if (canvas.width < 1 || canvas.height < 1) {
+    throw new Error("Canvas has invalid dimensions after decode.");
   }
 
   const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, "image/jpeg", quality));

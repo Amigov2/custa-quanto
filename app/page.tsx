@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CreditsBadge from "@/app/components/CreditsBadge";
+import LangSelector from "@/app/components/LangSelector";
+import { getCurrentLang, bcp47Of, onLangChange, type LangCode } from "@/lib/ui_lang";
 import { deleteChantier, loadChantiers, seedDemoIfEmpty } from "@/lib/storage";
 import { getService } from "@/lib/sinapi";
 import { fmtBRL, midOf } from "@/lib/estimate";
@@ -13,6 +15,7 @@ import { compressImage, makeThumbnail, PLACEHOLDER_THUMB } from "@/lib/image_pro
 import { deductCredit, hasCredits } from "@/lib/credits";
 import { summarizeLearnings, countLearnings } from "@/lib/learnings";
 import { summarizePreferences, countPreferenceSignals } from "@/lib/preferences";
+import type { PhotoAnalysis } from "@/lib/vision";
 import type { Chantier } from "@/lib/types";
 
 export default function HomePage() {
@@ -35,6 +38,9 @@ export default function HomePage() {
   const [nLearnings, setNLearnings] = useState(0);
   const [nPreferences, setNPreferences] = useState(0);
 
+  // Langue UI (contrôle le clavier iOS via lang="fr-FR" sur textarea + <html>)
+  const [uiLang, setUiLang] = useState<LangCode>("pt");
+
   useEffect(() => {
     seedDemoIfEmpty();
     setChantiers(loadChantiers());
@@ -42,12 +48,15 @@ export default function HomePage() {
     setPhotos(loadPhotos());
     setNLearnings(countLearnings());
     setNPreferences(countPreferenceSignals());
+    setUiLang(getCurrentLang());
     setReady(true);
-    return onPhotosChange(() => {
+    const offP = onPhotosChange(() => {
       setPhotos(loadPhotos());
       setNLearnings(countLearnings());
       setNPreferences(countPreferenceSignals());
     });
+    const offL = onLangChange(setUiLang);
+    return () => { offP(); offL(); };
   }, []);
 
   const paymentsByChantier = payments.reduce<Record<string, number>>((acc, p) => {
@@ -149,9 +158,20 @@ export default function HomePage() {
         const prefs = summarizePreferences();
         const combined = [learnings, prefs].filter(Boolean).join("");
         if (combined) form.append("learnings", combined);
-        const res = await fetch("/api/analyze-photo", { method: "POST", body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Erro ao analisar.");
+        let res: Response;
+        try {
+          res = await fetch("/api/analyze-photo", { method: "POST", body: form });
+        } catch {
+          throw new Error("Falha de conexão ao servidor. Verifique sua internet.");
+        }
+        let data: { error?: string; analysis?: PhotoAnalysis; nPhotos?: number };
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(`Servidor respondeu inesperadamente (status ${res.status}). Tente com menos fotos.`);
+        }
+        if (!res.ok) throw new Error(data.error || `Erro ao analisar (status ${res.status}).`);
+        if (!data.analysis) throw new Error("Resposta do servidor sem análise.");
         deductCredit();
         // Vignette générée depuis la première photo (représentative du chantier).
         let thumb = PLACEHOLDER_THUMB;
@@ -184,8 +204,9 @@ export default function HomePage() {
   return (
     <div>
       <div className="nav-blur sticky top-0 z-40 max-w-md mx-auto">
-        <div className="px-6 py-3 flex items-center justify-between">
-          <p className="text-[15px] font-semibold">Custa Quanto</p>
+        <div className="px-6 py-3 flex items-center justify-between gap-2">
+          <p className="text-[15px] font-semibold flex-1 truncate">Custa Quanto</p>
+          <LangSelector />
           <CreditsBadge compact />
         </div>
       </div>
@@ -221,6 +242,8 @@ export default function HomePage() {
               onChange={e => setText(e.target.value.slice(0, 500))}
               rows={3}
               placeholder="Ex: quero pintar minha cozinha de 15 m². Ou tire uma foto e deixe a IA analisar."
+              lang={bcp47Of(uiLang)}
+              inputMode="text"
               className="w-full bg-[color:var(--color-bg-2)] rounded-2xl px-4 py-3 text-[14px] outline-none resize-none placeholder:text-[color:var(--color-muted)] focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
               disabled={submitting}
             />
