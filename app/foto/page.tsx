@@ -11,6 +11,8 @@ import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
 import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import { compressImage, makeThumbnail, PLACEHOLDER_THUMB } from "@/lib/image_processing";
+import BeforeAfterSlider from "@/app/components/BeforeAfterSlider";
+import type { AfterStyle } from "@/lib/gemini_image";
 import { saveLearning, summarizeLearnings, countLearnings } from "@/lib/learnings";
 import { summarizePreferences, countPreferenceSignals } from "@/lib/preferences";
 import CreditsBadge from "@/app/components/CreditsBadge";
@@ -70,6 +72,9 @@ function FotoPageInner() {
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [userScope, setUserScope] = useState<string>("");
   const [photoId, setPhotoId] = useState<string | null>(null);
+  const [afterImage, setAfterImage] = useState<{ src: string; style: AfterStyle; mode: "gemini" | "demo" } | null>(null);
+  const [afterLoading, setAfterLoading] = useState<AfterStyle | null>(null);
+  const [afterError, setAfterError] = useState<string>("");
   const [drafts, setDrafts] = useState<PhotoRecord[]>([]);
   const [overrideAmbiente, setOverrideAmbiente] = useState<PhotoAnalysis["ambiente"] | null>(null);
   const [ambientePickerOpen, setAmbientePickerOpen] = useState<boolean>(false);
@@ -112,6 +117,41 @@ function FotoPageInner() {
     e.stopPropagation();
     if (!confirm("Excluir este rascunho?")) return;
     deletePhoto(id);
+  }
+
+  // Génère une preview "après reforma" via Google Gemini (ou fallback Unsplash en mode démo).
+  // Utilise la photo courante (file ou previewUrl si restauré depuis brouillon).
+  async function generateAfter(style: AfterStyle) {
+    setAfterError("");
+    setAfterLoading(style);
+    try {
+      let source: File | null = file;
+      // Si la photo vient d un brouillon restauré, on n a pas de File — on refetch la thumbnail.
+      if (!source && previewUrl) {
+        try {
+          const resp = await fetch(previewUrl);
+          const blob = await resp.blob();
+          source = new File([blob], "photo.jpg", { type: blob.type || "image/jpeg" });
+        } catch {
+          throw new Error("Foto original não disponível para gerar depois.");
+        }
+      }
+      if (!source) throw new Error("Sem foto para gerar depois.");
+
+      const form = new FormData();
+      form.append("photo", source);
+      form.append("style", style);
+      if (analysis?.ambiente) form.append("ambiente", analysis.ambiente);
+
+      const res = await fetch("/api/generate-after", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao gerar depois.");
+      setAfterImage({ src: data.imageDataUrl, style, mode: data.mode });
+    } catch (e) {
+      setAfterError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAfterLoading(null);
+    }
   }
 
   function pickFile() {
@@ -213,6 +253,9 @@ function FotoPageInner() {
     setConfirmedM2(false);
     setUserScope("");
     setPhotoId(null);
+    setAfterImage(null);
+    setAfterError("");
+    setAfterLoading(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -503,6 +546,82 @@ function FotoPageInner() {
                 </div>
               );
             })()}
+
+            {/* ✨ Ver depois — génération IA d une preview après reforma (3 styles).
+                Sans clé GOOGLE_API_KEY côté serveur → mode démo (inspiration Unsplash). */}
+            {previewUrl && (
+              <div>
+                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-2 px-2">
+                  ✨ Ver depois
+                  <span className="block normal-case tracking-normal text-[11px] font-normal text-[color:var(--color-muted)]">
+                    Preview IA · Voir après reforma
+                  </span>
+                </p>
+
+                {afterImage ? (
+                  <div className="card-outlined overflow-hidden">
+                    <BeforeAfterSlider
+                      beforeSrc={previewUrl}
+                      afterSrc={afterImage.src}
+                      aspectRatio={4 / 3}
+                    />
+                    <div className="p-3 flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-semibold text-[color:var(--color-accent)] uppercase tracking-wide">
+                        {afterImage.style}
+                      </span>
+                      {afterImage.mode === "demo" && (
+                        <span className="text-[10px] text-[#ff9500] font-medium">
+                          Modo demo · inspiração genérica
+                        </span>
+                      )}
+                      <button
+                        onClick={() => setAfterImage(null)}
+                        className="ml-auto text-[11px] font-medium text-[color:var(--color-muted)] hover:text-[color:var(--color-accent)]"
+                      >
+                        Trocar estilo
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="card-outlined p-4">
+                    <p className="text-[12px] text-[color:var(--color-muted)] mb-3">
+                      Escolha um estilo — a IA gera uma preview do resultado após reforma :
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(["moderno", "rustico", "escandinavo"] as AfterStyle[]).map(s => {
+                        const label = s === "moderno" ? "Moderno" : s === "rustico" ? "Rústico" : "Escandinavo";
+                        const emoji = s === "moderno" ? "🖤" : s === "rustico" ? "🪵" : "🤍";
+                        const busy = afterLoading === s;
+                        const disabled = afterLoading !== null;
+                        return (
+                          <button
+                            key={s}
+                            onClick={() => generateAfter(s)}
+                            disabled={disabled}
+                            className="flex flex-col items-center gap-1 py-3 rounded-xl border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] transition text-[12px] font-medium disabled:opacity-40"
+                          >
+                            {busy ? (
+                              <span className="inline-block w-4 h-4 border-2 border-[color:var(--color-accent)]/30 border-t-[color:var(--color-accent)] rounded-full animate-spin" />
+                            ) : (
+                              <span className="text-lg">{emoji}</span>
+                            )}
+                            <span>{label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {afterLoading && (
+                      <p className="text-[11px] text-[color:var(--color-muted)] mt-3 text-center">
+                        Gerando ({afterLoading})… ~15-30s
+                      </p>
+                    )}
+                    {afterError && (
+                      <p className="text-[11px] text-[#ff3b30] mt-2">{afterError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Réponse à la question du user dans SA langue (nouveau schema { text, lang })
                 avec fallback sur l'ancien { pt, fr } pour les analyses pré-2026-09. */}
