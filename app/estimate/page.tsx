@@ -1144,6 +1144,60 @@ function CompareModal({
   const [totalTxt, setTotalTxt] = useState("");
   const [mode, setMode] = useState<"total" | "detail">("total");
   const [postValues, setPostValues] = useState<Record<string, string>>({});
+  const [aiParsing, setAiParsing] = useState<boolean>(false);
+  const [aiError, setAiError] = useState<string>("");
+  const [aiSummary, setAiSummary] = useState<string>("");
+  const aiInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAiParse(file: File) {
+    setAiError("");
+    setAiSummary("");
+    setAiParsing(true);
+    try {
+      const expectedServices = chantierEst.estimates.map(e => ({
+        serviceId: e.svc.id,
+        name: e.svc.name,
+        category: e.svc.cat,
+      }));
+      const form = new FormData();
+      form.append("file", file);
+      form.append("expectedServices", JSON.stringify(expectedServices));
+      const res = await fetch("/api/parse-orcamento", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao analisar orçamento.");
+      const parsed = data.parsed as {
+        totalRecebido: number;
+        postsRecebido: Record<string, number>;
+        linhas: Array<{ descricao_normalizada: string; servico_matched: string | null }>;
+        linhas_nao_matchadas: number;
+      };
+      // Pré-remplit les champs.
+      if (parsed.totalRecebido > 0) {
+        setTotalTxt(String(Math.round(parsed.totalRecebido)));
+      }
+      if (Object.keys(parsed.postsRecebido).length > 0) {
+        setMode("detail");
+        const values: Record<string, string> = {};
+        Object.entries(parsed.postsRecebido).forEach(([sid, v]) => {
+          values[sid] = String(Math.round(v));
+        });
+        setPostValues(values);
+      }
+      const matched = parsed.linhas.filter(l => l.servico_matched).length;
+      setAiSummary(
+        `✓ ${parsed.linhas.length} linhas lidas · ${matched} associadas a serviços${parsed.linhas_nao_matchadas > 0 ? ` · ${parsed.linhas_nao_matchadas} sem match` : ""}`,
+      );
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiParsing(false);
+    }
+  }
+
+  function onAiFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (f) handleAiParse(f);
+  }
 
   function submit() {
     const total = parseFloat(totalTxt.replace(/\./g, "").replace(",", "."));
@@ -1173,6 +1227,44 @@ function CompareModal({
           </button>
         </div>
         <div className="p-5 space-y-5 overflow-y-auto">
+          {/* Upload orçamento (PDF ou photo) — parse automatique via Claude Vision */}
+          <div className="rounded-2xl border border-dashed border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent-soft)]/40 p-4">
+            <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-2 px-1">
+              📸 Ler orçamento com IA
+              <span className="block normal-case tracking-normal text-[10px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Lire un devis via IA</span>
+            </p>
+            <input
+              ref={aiInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={onAiFileChange}
+              className="sr-only"
+              id="cq-orcamento-file"
+            />
+            <label
+              htmlFor="cq-orcamento-file"
+              className={`w-full rounded-xl bg-[color:var(--color-accent)] text-white py-2.5 text-[13px] font-semibold flex items-center justify-center gap-2 cursor-pointer transition ${aiParsing ? "opacity-60 pointer-events-none" : "hover:opacity-90"}`}
+            >
+              {aiParsing ? (
+                <>
+                  <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Analisando o orçamento…
+                </>
+              ) : (
+                <>📤 Escolher PDF ou foto</>
+              )}
+            </label>
+            {aiSummary && (
+              <p className="text-[11px] text-[#34c759] mt-2 font-medium">{aiSummary}</p>
+            )}
+            {aiError && (
+              <p className="text-[11px] text-[#ff3b30] mt-2">{aiError}</p>
+            )}
+            <p className="text-[10px] text-[color:var(--color-muted)] mt-2 leading-snug">
+              A IA extrai as linhas do orçamento e associa cada uma aos serviços do chantier.
+            </p>
+          </div>
+
           <div>
             <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-1.5 block px-1">
               Valor total do orçamento (R$)
