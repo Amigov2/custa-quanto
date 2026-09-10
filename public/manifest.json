@@ -1,0 +1,15 @@
+{
+  "name": "Custa Quanto",
+  "short_name": "Custa Quanto",
+  "description": "Estimador de reforma RJ com IA — SINAPI 2025 + Rio Centro",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f2f5",
+  "theme_color": "#0071e3",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
