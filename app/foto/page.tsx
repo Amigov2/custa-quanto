@@ -10,6 +10,7 @@ import { loadChantiers } from "@/lib/storage";
 import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
 import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
+import { compressImage, makeThumbnail, PLACEHOLDER_THUMB } from "@/lib/image_processing";
 import { saveLearning, summarizeLearnings, countLearnings } from "@/lib/learnings";
 import { summarizePreferences, countPreferenceSignals } from "@/lib/preferences";
 import CreditsBadge from "@/app/components/CreditsBadge";
@@ -39,51 +40,8 @@ const CONFIANCA_LABEL: Record<PhotoAnalysis["tamanho_confianca"], string> = {
   alta:  "estimativa boa",
 };
 
-// Resize à 2000px + JPEG q0.85. Une photo iPhone de 12 MB tombe à ~500 KB
-// sans perte visible pour l'analyse Vision, et évite la limite backend 8 MB.
-async function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise<File> {
-  if (file.size <= 1_500_000 && file.type !== "image/heic" && file.type !== "image/heif") return file;
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
-  const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, "image/jpeg", quality));
-  if (!blob) return file;
-  const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
-  return new File([blob], name, { type: "image/jpeg" });
-}
-
-// Vignette 512px JPEG q0.75 → ~30-60 KB en base64 dans localStorage.
-// JPEG plutôt que WebP pour compatibilité universelle (iOS Safari ancien).
-async function makeThumbnail(file: File, maxDim = 512, quality = 0.75): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
-  const w = Math.round(bitmap.width * scale);
-  const h = Math.round(bitmap.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas ctx null");
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
-  return canvas.toDataURL("image/jpeg", quality);
-}
-
-// Placeholder gris utilisé si la génération de vignette échoue — la photo reste sauvegardée.
-// URL-encoding plutôt que btoa car btoa ne gère pas les caractères hors Latin1 (emojis).
-const PLACEHOLDER_THUMB =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect width="40" height="40" fill="#e5e5e7"/><path d="M12 15h4l1.5-2h5L24 15h4v10H12V15z" fill="none" stroke="#86868b" stroke-width="1.5"/><circle cx="20" cy="20" r="3" fill="none" stroke="#86868b" stroke-width="1.5"/></svg>',
-  );
+// Traitement d image (compression, vignette, placeholder) extrait dans lib/image_processing
+// pour partage avec la home (input hybride).
 
 // useSearchParams doit être dans un enfant de Suspense pour le prerendering Next 16.
 export default function FotoPage() {
@@ -98,6 +56,7 @@ function FotoPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetChantierId = searchParams.get("chantierId");
+  const openPhotoId = searchParams.get("openPhoto");
   const inputRef = useRef<HTMLInputElement>(null);
   const INPUT_ID = "cq-photo-input";
   const CAMERA_ID = "cq-photo-camera";
@@ -123,10 +82,18 @@ function FotoPageInner() {
     localStorage.removeItem("cq_last_photo_analysis");
     setDrafts(getDrafts());
     setLearningsCount(countLearnings());
+    // Si openPhoto=X est présent en URL, on ouvre directement cette photo en step=result.
+    // Utilisé par la home après une analyse hybride (photo depuis input home).
+    if (openPhotoId) {
+      const rec = getPhoto(openPhotoId);
+      if (rec) openDraft(rec);
+    }
     return onPhotosChange(() => {
       setDrafts(getDrafts());
       setLearningsCount(countLearnings());
     });
+    // openPhotoId est intentionnellement omis — on ne rouvre que lors du mount initial.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function openDraft(rec: PhotoRecord) {

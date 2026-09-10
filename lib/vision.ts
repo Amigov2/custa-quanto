@@ -139,16 +139,37 @@ ${AVAILABLE_MACRO_IDS.join(", ")}
 observacoes :
 - Sempre inclua uma advertência sobre a necessidade de medir com trena/metro para ter o tamanho preciso.`;
 
-export async function analyzePhoto(imageBase64: string, mediaType: string, scope?: string, learnings?: string): Promise<PhotoAnalysis> {
+export type ImageInput = { base64: string; mediaType: string };
+
+// Signature flexible : accepte soit une photo unique (compat), soit un tableau (multi).
+export async function analyzePhoto(
+  images: string | ImageInput | ImageInput[],
+  mediaType?: string,
+  scope?: string,
+  learnings?: string,
+): Promise<PhotoAnalysis> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY não configurada. Adicione em .env.local.");
   }
 
+  // Normalise l'input en tableau. Compat rétro : 2 params (base64, mediaType).
+  const imageList: ImageInput[] = Array.isArray(images)
+    ? images
+    : typeof images === "string"
+      ? [{ base64: images, mediaType: mediaType || "image/jpeg" }]
+      : [images];
+
+  const multi = imageList.length > 1;
+
   // Si l'utilisateur décrit un scope précis, on force Claude à s'y limiter.
   // Sans scope → comportement historique (analyse complète).
+  const multiIntro = multi
+    ? `Analise as ${imageList.length} fotos abaixo (elas descrevem o mesmo chantier ou o mesmo contexto) e retorne UM JSON consolidado.`
+    : "Analise esta foto e retorne o JSON conforme a estrutura definida.";
+
   const userText = scope && scope.trim()
-    ? `Analise esta foto e retorne o JSON conforme a estrutura definida.
+    ? `${multiIntro}
 
 TEXTO DO USUÁRIO (pode ser um escopo, uma pergunta, ou ambos) :
 "${scope.trim()}"
@@ -170,7 +191,7 @@ Regras :
 3) Se o texto for AMBOS (escopo + pergunta), aplique as duas regras.
 
 4) Se não há pergunta clara, NÃO preencha "resposta_ao_usuario" (deixe undefined).`
-    : "Analise esta foto e retorne o JSON conforme a estrutura definida.";
+    : multiIntro;
 
   // Injecte les apprentissages accumulés du user (corrections passées) si présents.
   // Ce texte a été résumé côté client à partir des LearningRecord bruts.
@@ -193,14 +214,14 @@ Regras :
         {
           role: "user",
           content: [
-            {
+            ...imageList.map(img => ({
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType,
-                data: imageBase64,
+                media_type: img.mediaType,
+                data: img.base64,
               },
-            },
+            })),
             {
               type: "text",
               text: userTextWithLearnings,
