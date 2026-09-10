@@ -563,7 +563,7 @@ function Detail({
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              <span className="text-[12px]">{chantierEst.days} dias · {chantierEst.workers} pedreiro{chantierEst.workers > 1 ? "s" : ""}</span>
+              <span className="text-[12px]">{chantierEst.days} {chantierEst.days === 1 ? "dia" : "dias"} · {chantierEst.workers} pedreiro{chantierEst.workers > 1 ? "s" : ""}</span>
             </div>
           </div>
 
