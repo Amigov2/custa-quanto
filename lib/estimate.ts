@@ -2,6 +2,7 @@ import { getService } from "./sinapi";
 import type { ChantierEstimate, PostEstimate, ServicePost } from "./types";
 import type { Finish } from "./materials";
 import { getObservedMultiplier } from "./prices_observed";
+import { getAdjustedMultiplier } from "./price_feedback";
 
 const FINISH_PRICE: Record<Finish, number> = {
   economico: 0.75,
@@ -78,9 +79,12 @@ export function estimatePost(
   const baseMax = svc.max * qty * priceFactor * finishMult;
   const moPct = svc.mo_pct;
 
-  // Calibration matériel avec données observées Rio (si dispo)
+  // Calibration matériel : combine base Rio (246 NFs Rio Centro) + feedbacks user
+  // ("j'ai payé X pour ce chantier") pondérés dans getAdjustedMultiplier.
+  // observed reste utilisé pour observedSource dans PostEstimate (transparence).
   const observed = getObservedMultiplier(svc.id);
-  const materialMult = observed ? observed.mult : 1.0;
+  const adjusted = getAdjustedMultiplier(svc.id);
+  const materialMult = adjusted.mult;
 
   // Matériel brut (SINAPI × observation Rio)
   const materialBase: [number, number] = range(

@@ -17,6 +17,7 @@ import {
   type PaymentKind,
 } from "@/lib/payments";
 import { getPhotosByChantier, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
+import { getFeedbackForChantier, saveFeedback, onFeedbacksChange, type PriceFeedback } from "@/lib/price_feedback";
 import type { Chantier } from "@/lib/types";
 
 export default function ContasPage() {
@@ -26,8 +27,10 @@ export default function ContasPage() {
   const [chantier, setChantier] = useState<Chantier | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
+  const [feedback, setFeedback] = useState<PriceFeedback | undefined>(undefined);
   const [ready, setReady] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showFinalizeModal, setShowFinalizeModal] = useState(false);
 
   useEffect(() => {
     seedDemoIfEmpty();
@@ -35,8 +38,11 @@ export default function ContasPage() {
     setChantier(c);
     if (c) setPayments(loadPayments(id));
     setPhotos(getPhotosByChantier(id));
+    setFeedback(getFeedbackForChantier(id));
     setReady(true);
-    return onPhotosChange(() => setPhotos(getPhotosByChantier(id)));
+    const off1 = onPhotosChange(() => setPhotos(getPhotosByChantier(id)));
+    const off2 = onFeedbacksChange(() => setFeedback(getFeedbackForChantier(id)));
+    return () => { off1(); off2(); };
   }, [id]);
 
   const chantierEst = useMemo(
@@ -133,6 +139,28 @@ export default function ContasPage() {
                   : `${fmtBRL(progress!.restante)} restante`}
               </span>
             </div>
+
+            {/* CTA finalizar : apparaît dès 60% de progression, ou badge si déjà finalisé */}
+            {feedback ? (
+              <div className="mt-4 rounded-xl bg-[#34c759]/10 px-3 py-2 flex items-center gap-2">
+                <span>🎯</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-[#34c759]">
+                    Chantier finalizado — {fmtBRL(feedback.totalPaid)} pago
+                  </p>
+                  <p className="text-[10px] text-[color:var(--color-muted)]">
+                    Sua correção calibra as estimativas futuras
+                  </p>
+                </div>
+              </div>
+            ) : progress!.pct >= 0.6 ? (
+              <button
+                onClick={() => setShowFinalizeModal(true)}
+                className="w-full mt-4 rounded-xl bg-[color:var(--color-accent)] text-white py-2.5 text-[13px] font-semibold flex items-center justify-center gap-2"
+              >
+                🎯 Finalizar chantier — quanto pagou vraiment ?
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -345,6 +373,114 @@ export default function ContasPage() {
           onAdd={handleAdd}
         />
       )}
+
+      {showFinalizeModal && chantier && progress && (
+        <FinalizeChantierModal
+          chantierId={chantier.id}
+          totalEstimated={progress.totalEstimado}
+          totalPaidSoFar={progress.totalPago}
+          serviceIds={chantier.posts.map(p => p.serviceId)}
+          onClose={() => setShowFinalizeModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Modal Finalizar chantier : feedback prix payé pour calibrer l'IA
+// ============================================================
+function FinalizeChantierModal({
+  chantierId, totalEstimated, totalPaidSoFar, serviceIds, onClose,
+}: {
+  chantierId: string;
+  totalEstimated: number;
+  totalPaidSoFar: number;
+  serviceIds: string[];
+  onClose: () => void;
+}) {
+  const [totalPaid, setTotalPaid] = useState<string>(String(Math.round(totalPaidSoFar)));
+  const [notes, setNotes] = useState<string>("");
+
+  function confirm() {
+    const paid = parseFloat(totalPaid.replace(/[^\d.-]/g, ""));
+    if (!(paid > 0)) return;
+    saveFeedback({
+      chantierId,
+      totalEstimated: Math.round(totalEstimated),
+      totalPaid: Math.round(paid),
+      serviceIds,
+      notes: notes.trim() || undefined,
+    });
+    onClose();
+  }
+
+  const paidNum = parseFloat(totalPaid.replace(/[^\d.-]/g, "")) || 0;
+  const delta = paidNum - totalEstimated;
+  const deltaPct = totalEstimated > 0 ? (delta / totalEstimated) * 100 : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center px-6 pb-6 sm:pb-0">
+      <div className="bg-white w-full max-w-sm rounded-3xl overflow-hidden">
+        <div className="p-6 text-center">
+          <div className="w-12 h-12 mx-auto rounded-full bg-[color:var(--color-accent-soft)] flex items-center justify-center mb-3 text-xl">
+            🎯
+          </div>
+          <p className="text-[17px] font-semibold">Finalizar chantier</p>
+          <p className="text-[12px] text-[color:var(--color-muted)] mt-1 leading-snug px-4">
+            Sua correção calibra os preços Rio para os próximos chantiers.<br/>
+            <span className="italic">La correction calibre les prix futurs</span>
+          </p>
+        </div>
+
+        <div className="px-5 pb-3">
+          <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-1.5 block px-1">
+            Quanto pagou no total ?
+          </label>
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--color-muted)] text-[15px] font-medium">R$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={totalPaid}
+              onChange={e => setTotalPaid(e.target.value)}
+              className="w-full bg-[color:var(--color-bg-2)] rounded-xl pl-12 pr-4 py-3 text-[17px] font-semibold num outline-none focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
+              autoFocus
+            />
+          </div>
+          {paidNum > 0 && (
+            <p className={`text-[11px] mt-1.5 px-1 num ${Math.abs(deltaPct) < 5 ? "text-[color:var(--color-muted)]" : deltaPct > 0 ? "text-[#ff9500]" : "text-[#34c759]"}`}>
+              vs estimado {fmtBRL(totalEstimated)} · {deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(1)}%
+            </p>
+          )}
+        </div>
+
+        <div className="px-5 pb-5">
+          <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-1.5 block px-1">
+            Notas <span className="normal-case tracking-normal text-[color:var(--color-muted)]">(opcional)</span>
+          </label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value.slice(0, 300))}
+            rows={2}
+            placeholder="Ex: material Coral barato promoção · mão-de-obra Valternir + equipe"
+            className="w-full bg-[color:var(--color-bg-2)] rounded-xl px-4 py-2.5 text-[13px] outline-none resize-none placeholder:text-[color:var(--color-muted)] focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
+          />
+        </div>
+
+        <div className="border-t border-[color:var(--color-line)] grid grid-cols-2">
+          <button onClick={onClose} className="py-3.5 text-[15px] text-[color:var(--color-muted)] hover:text-[color:var(--color-ink)] transition border-r border-[color:var(--color-line)]">
+            Cancelar
+          </button>
+          <button
+            onClick={confirm}
+            disabled={!(paidNum > 0)}
+            className="py-3.5 text-[15px] font-semibold text-[color:var(--color-accent)] disabled:opacity-40 hover:bg-[color:var(--color-bg-2)] transition"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
