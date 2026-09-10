@@ -94,8 +94,10 @@ Keep the same structure and layout of the room — walls, floor, ceiling positio
 Only change the finishes : materials, colors, furniture, decoration, lighting.
 The result must look like a realistic professional interior design photo of the same room after renovation.`;
 
+  // Modèle : gemini-2.5-flash-image (Nano Banana stable). Alternatives disponibles :
+  // gemini-3.1-flash-image (Nano Banana 2, plus récent) ou gemini-3-pro-image (Pro).
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -122,12 +124,14 @@ The result must look like a realistic professional interior design photo of the 
 
   const data = await res.json();
   const parts = data?.candidates?.[0]?.content?.parts || [];
-  const imgPart = parts.find((p: { inline_data?: { data?: string; mime_type?: string } }) => p.inline_data?.data);
-  if (!imgPart?.inline_data?.data) throw new Error("Gemini n a pas retourné d image.");
-
-  const mt = imgPart.inline_data.mime_type || "image/png";
+  // L API renvoie inlineData en camelCase (pas snake_case comme dans la doc).
+  type ImgPart = { inlineData?: { data?: string; mimeType?: string }; inline_data?: { data?: string; mime_type?: string } };
+  const imgPart: ImgPart | undefined = parts.find((p: ImgPart) => p.inlineData?.data || p.inline_data?.data);
+  const dataBase64 = imgPart?.inlineData?.data || imgPart?.inline_data?.data;
+  const mt = imgPart?.inlineData?.mimeType || imgPart?.inline_data?.mime_type || "image/png";
+  if (!dataBase64) throw new Error("Gemini n a pas retourné d image.");
   return {
-    imageDataUrl: `data:${mt};base64,${imgPart.inline_data.data}`,
+    imageDataUrl: `data:${mt};base64,${dataBase64}`,
     mode: "gemini",
     style,
     ambiente,
