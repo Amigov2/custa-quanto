@@ -1,12 +1,26 @@
 // Chat conversationnel avec Claude Haiku vision.
 // Utilisé après l'analyse initiale d'une photo pour approfondir : le user pose des questions,
 // Claude conserve le contexte (résumé de l'analyse + historique).
+//
+// V2 mémoire cross-photo : quand la photo est rattachée à un chantier, le chat reçoit
+// aussi le contexte de toutes les autres photos du chantier + leurs conversations passées.
+// L'IA devient un vrai "contremaitre" avec mémoire de tout le chantier.
 
 import type { PhotoAnalysis } from "./vision";
 
 export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+};
+
+// Type minimal pour éviter une dépendance circulaire vers photo_history.
+export type PhotoForContext = {
+  id: string;
+  dateISO: string;
+  label?: string;
+  userScope: string;
+  analysis: PhotoAnalysis;
+  chatHistory?: ChatMessage[];
 };
 
 // Résumé compact de l'analyse initiale pour le contexte de la conversation.
@@ -28,6 +42,69 @@ ${produtos}
 Passos:
 ${passos}
 `;
+}
+
+// Résumé court d'UNE photo précédente du même chantier (pour le contexte cross-photo).
+// Beaucoup plus compact que analysisContext (on limite les tokens injectés).
+function shortPhotoSummary(p: PhotoForContext, idx: number): string {
+  const date = new Date(p.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  const nItens = p.analysis.itens_detectados.length;
+  const scope = p.userScope ? ` — pergunta/escopo: "${p.userScope}"` : "";
+  const label = p.label ? ` [${p.label}]` : "";
+  const nConversas = Math.ceil((p.chatHistory?.length ?? 0) / 2);
+
+  const parts = [
+    `### Foto ${idx + 1}${label} — ${date}`,
+    `- Ambiente: ${p.analysis.ambiente} · ~${p.analysis.tamanho_estimado_m2} m²${scope}`,
+    `- ${nItens} itens detectados`,
+  ];
+
+  // Inclut les 2-3 derniers échanges les plus récents seulement (pour rester compact).
+  if (nConversas > 0 && p.chatHistory) {
+    const recent = p.chatHistory.slice(-4); // 2 derniers échanges max
+    parts.push(`- Conversas anteriores (${nConversas} echanges) :`);
+    recent.forEach(m => {
+      const short = m.content.length > 140 ? m.content.slice(0, 140) + "…" : m.content;
+      parts.push(`  ${m.role === "user" ? "U" : "A"}: ${short}`);
+    });
+  }
+  return parts.join("\n");
+}
+
+// Contexte enrichi cross-photo : injecté quand la photo courante appartient à un chantier
+// avec d'autres photos. L'IA voit alors l'évolution + les conversas passées → devient contremaitre.
+export function chantierMemoryContext(
+  chantierName: string,
+  currentPhoto: PhotoForContext,
+  otherPhotos: PhotoForContext[],
+): string {
+  const sorted = otherPhotos
+    .filter(p => p.id !== currentPhoto.id)
+    .sort((a, b) => a.dateISO.localeCompare(b.dateISO));
+
+  if (sorted.length === 0) {
+    // Un seul cliché du chantier — fallback sur l'ancien contexte.
+    return analysisContext(currentPhoto.analysis);
+  }
+
+  const summaries = sorted.map((p, i) => shortPhotoSummary(p, i)).join("\n\n");
+
+  return `Você é o contremaitre virtual do chantier "${chantierName}".
+Você tem memória completa deste chantier — todas as fotos, todos os escopos, todas as conversas passadas.
+
+## Histórico do chantier (fotos anteriores em ordem cronológica) :
+
+${summaries}
+
+## FOTO ATUAL (a que o usuário está olhando agora) :
+
+${analysisContext(currentPhoto.analysis)}
+
+Regras específicas para este contexto :
+- Refira-se ao histórico quando relevante ("na foto de 3 dias atrás vejo X, agora vejo Y").
+- Detecte evolução : progresso, problemas novos, coisas terminadas.
+- Se o usuário perguntar "onde estamos?", faça um mini status do chantier.
+- Se ele já discutiu algo em fotos anteriores, considere isso resolvido a menos que ele traga de novo.`;
 }
 
 const SYSTEM_PROMPT = `Você é um especialista em reformas residenciais no Brasil, ajudando o usuário a entender melhor uma foto que ele acaba de enviar.

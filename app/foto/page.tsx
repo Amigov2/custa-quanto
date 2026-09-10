@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMacro, getMacroFr } from "@/lib/macros";
 import type { PhotoAnalysis } from "@/lib/vision";
-import { analysisContext, type ChatMessage } from "@/lib/chat";
+import { analysisContext, chantierMemoryContext, type ChatMessage } from "@/lib/chat";
+import { loadChantiers } from "@/lib/storage";
 import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
-import { savePhoto, getDrafts, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
+import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import CreditsBadge from "@/app/components/CreditsBadge";
 
 type Step = "idle" | "preview" | "analyzing" | "result" | "error";
@@ -947,7 +948,26 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
   const [err, setErr] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const context = useMemo(() => analysisContext(analysis), [analysis]);
+  // Contexte enrichi cross-photo : si la photo est rattachée à un chantier avec
+  // d'autres photos, on injecte tout l'historique du chantier (fotos + conversas).
+  // Sinon fallback sur l'ancien contexte simple (analyse courante seule).
+  const { context, memoryStats } = useMemo(() => {
+    const currentPhoto = photoId ? getPhoto(photoId) : undefined;
+    if (!currentPhoto || !currentPhoto.chantierId) {
+      return { context: analysisContext(analysis), memoryStats: null };
+    }
+    const chantier = loadChantiers().find(c => c.id === currentPhoto.chantierId);
+    const chantierPhotos = getPhotosByChantier(currentPhoto.chantierId);
+    const otherPhotos = chantierPhotos.filter(p => p.id !== currentPhoto.id);
+    if (otherPhotos.length === 0) {
+      return { context: analysisContext(analysis), memoryStats: null };
+    }
+    const nExchanges = chantierPhotos.reduce((s, p) => s + Math.ceil((p.chatHistory?.length ?? 0) / 2), 0);
+    return {
+      context: chantierMemoryContext(chantier?.name || "Chantier", currentPhoto, otherPhotos),
+      memoryStats: { nPhotos: chantierPhotos.length, nExchanges },
+    };
+  }, [analysis, photoId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -1003,6 +1023,14 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
           <p className="text-[15px] font-semibold">💬 Chat IA</p>
           <CreditsBadge compact />
         </div>
+        {memoryStats && (
+          <div className="max-w-md mx-auto px-6 pb-2">
+            <div className="flex items-center gap-2 rounded-full bg-[color:var(--color-accent-soft)] px-3 py-1.5 text-[11px] font-medium text-[color:var(--color-accent)]">
+              <span>🧠</span>
+              <span>Memória do chantier ativa · {memoryStats.nPhotos} foto{memoryStats.nPhotos > 1 ? "s" : ""} · {memoryStats.nExchanges} conversa{memoryStats.nExchanges > 1 ? "s" : ""}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto max-w-md w-full mx-auto px-6 py-4 space-y-3">
