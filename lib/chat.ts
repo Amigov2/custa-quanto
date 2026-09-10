@@ -119,7 +119,26 @@ Content rules :
 - Be concrete : cite brands, products, quantities, prices when relevant.
 - If the user asks something unrelated to renovation, redirect gently.
 - Short answers (max 4-5 sentences), unless the question requires depth.
-- Never invent SINAPI prices if unsure — say "check Obramax/LPK" in the user's language.`;
+- Never invent SINAPI prices if unsure — say "check Obramax/LPK" in the user's language.
+
+CRITICAL RULE — STRUCTURAL WORKS (SAFETY) :
+When the question or photo involves any of these structural elements, follow specific rules :
+- Retaining walls (mur de contenção/soutènement) — especially over 2m tall
+- Load-bearing walls (mur porteur)
+- Concrete slabs (laje)
+- Foundations, columns, beams
+- Structural stairs, structural chimneys
+
+For these cases :
+1. NEVER recommend a single simplistic DIY fix (like "just apply waterproofing").
+2. For infiltration in retaining walls : the CORRECT solution addresses the CAUSE (drainage). Order :
+   a) Drainage : excavate on the earth side, install perforated PVC 100mm drain at the bottom, backfill with 20-40mm gravel, geotextile (bidim).
+   b) Weep holes (barbacãs) Ø75mm every 2-3m in the wall base.
+   c) Positive-side waterproofing (earth side) : bituminous membrane, EPDM, or Sika Igol before backfilling.
+   d) ONLY THEN, apply crystalline waterproofing (Vedatop, Sika 1) on the visible side as finishing.
+   WARNING : sealing only the visible side (negative waterproofing) WITHOUT drainage on a retaining wall is DANGEROUS — hydrostatic pressure can crack or collapse the wall.
+3. For walls over 3m tall, cracks, structural deformation : ALWAYS recommend consulting a CREA-certified structural engineer first. A laudo (~R$ 2.000-4.000) prevents collapses.
+4. Always add a warning line at the end of your response for structural cases : "⚠️ Estrutural : consulte um engenheiro CREA antes de intervir."`;
 
 export async function callChat(context: string, history: ChatMessage[], userMessage: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;

@@ -480,6 +480,30 @@ function FotoPageInner() {
               </div>
             )}
 
+            {/* Alerte structurelle : détectée si les observações contiennent "engenheiro" ou "CREA"
+                ou "estrutural" — l'IA suit la règle du prompt et flag ces cas. */}
+            {(() => {
+              const allObs = [...(analysis.observacoes || []), ...(analysis.observacoes_fr || [])];
+              const isStructural = allObs.some(o => /engenheiro|CREA|estrutural|contenção|contention|porteur|porteur|hydrostatic|hidrostátic/i.test(o));
+              if (!isStructural) return null;
+              return (
+                <div className="card-outlined p-4 border-2 border-[#ff9500] bg-[#fff8ee]">
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl leading-none">⚠️</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] uppercase tracking-wide text-[#ff9500] font-bold mb-1">
+                        Obra estrutural detectada
+                      </p>
+                      <p className="text-[13px] leading-relaxed">
+                        A IA identificou uma obra que envolve cargas ou pressões críticas (muro de contenção, laje, muro portante...).
+                        Consulte um <b>engenheiro estrutural CREA</b> antes de qualquer intervenção. Um laudo custa ~R$ 2.000-4.000 e evita colapsos.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Réponse à la question du user dans SA langue (nouveau schema { text, lang })
                 avec fallback sur l'ancien { pt, fr } pour les analyses pré-2026-09. */}
             {(() => {

@@ -113,6 +113,31 @@ REGRA CRÍTICA sobre tamanho :
 - Sempre forneça tamanho_min_m2 e tamanho_max_m2 (fourchette realista baseada no que você vê). O tamanho_estimado_m2 é a média.
 - Prefira subestimar : é mais seguro que superestimar.
 
+REGRA CRÍTICA sobre OBRAS ESTRUTURAIS (SEGURANÇA) :
+Quando a foto ou o escopo indica um dos ouvrages abaixo, você DEVE seguir regras específicas :
+
+Ouvrages estruturais críticos :
+- Muro de contenção (mur de soutènement, retaining wall) — especialmente > 2m altura
+- Muro portante (mur porteur, load-bearing wall)
+- Laje / laje de concreto (dalle en béton)
+- Fundações (fondations)
+- Vigas, pilares, colunas (poutres, piliers, colonnes)
+- Escadas de concreto (>5 degraus estruturais)
+- Chaminé estrutural, exaustão de restaurante (elementos porteurs)
+
+Para esses casos :
+1. NUNCA recomende uma solução DIY única e simplista (ex: só aplicar produto impermeabilizante, só pintar, só selar).
+2. Para infiltração em muro de contenção : a MELHOR solução é ATACAR A CAUSA (drenagem). Ordem obrigatória :
+   a) Drenagem : escavar do lado terra, instalar dreno agrícola (PVC 100mm perfurado) no pé, remblai de brita 3-4 (20-40mm), geotêxtil (bidim), então terra.
+   b) Barbacãs Ø75mm horizontais a cada 2-3m no baixo do muro.
+   c) Impermeabilização POSITIVA (lado terra) : manta betuminosa, EPDM ou Sika Igol antes do remblai.
+   d) Só DEPOIS de a) b) c), pode aplicar cristalizante lado visível (Vedatop, Sika 1) como acabamento.
+   ATENÇÃO : impermeabilização só do lado visível (impermeabilização negativa) SEM drenagem em muro de contenção é PERIGOSO — a pressão hidrostática pode fissurar ou colapsar o muro.
+3. Para muros > 3m de altura, lajes com fissuras, deformações estruturais : recomende OBRIGATORIAMENTE consulta a um engenheiro estrutural CREA-certificado antes de qualquer intervenção. Um laudo custa ~R$ 2.000-4.000 e evita colapsos.
+4. No campo "observacoes" e "observacoes_fr" : SEMPRE inclua uma frase clara :
+   "⚠️ Obra estrutural detectada. Consulte um engenheiro estrutural CREA antes de intervir — o cálculo de cargas e pressão não pode ser feito por foto."
+5. No campo "produtos_recomendados" para essas obras : indique os produtos das etapas de drenagem + impermeabilização positiva (não só cristalizantes lado visível).
+
 produtos_recomendados :
 - Cite 1-3 produtos concretos para o principal serviço detectado.
 - Para cada produto :
