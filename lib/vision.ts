@@ -60,7 +60,9 @@ export type PhotoAnalysis = {
   passo_a_passo: PhotoAnalysisStep[];
   observacoes: string[];
   observacoes_fr: string[];
-  resposta_ao_usuario?: { pt: string; fr: string };  // rempli si le user posait une question dans son scope
+  // Rempli si le user posait une question dans son scope. text = réponse dans la langue de l user.
+  // lang = code langue détectée (fr, pt, es, en, zh, it, de, ja...). Anciennes analyses ont pt/fr.
+  resposta_ao_usuario?: { text?: string; lang?: string; pt?: string; fr?: string };
 };
 
 const AVAILABLE_MACRO_IDS = Object.keys(MACRO_FR);
@@ -103,7 +105,7 @@ Estrutura obrigatória :
   ],
   "observacoes": [string],
   "observacoes_fr": [string],
-  "resposta_ao_usuario": { "pt": string, "fr": string } // OPCIONAL — apenas se o usuário fez uma pergunta
+  "resposta_ao_usuario": { "text": string, "lang": string } // OPCIONAL — apenas se o usuário fez uma pergunta. lang = código idioma (fr, pt, es, en, zh, etc.). text = resposta escrita nesse mesmo idioma.
 }
 
 REGRA CRÍTICA sobre tamanho :
@@ -184,7 +186,10 @@ Regras :
    - Se o escopo pede algo que não é visível na foto, mencione em observações.
 
 2) Se o texto CONTÉM UMA PERGUNTA (ex: "quanto tempo leva pra uma pessoa?", "posso fazer sozinho?", "qual é o melhor material?") :
-   - PREENCHA OBRIGATORIAMENTE o campo "resposta_ao_usuario" com { "pt": "...", "fr": "..." }.
+   - PREENCHA OBRIGATORIAMENTE o campo "resposta_ao_usuario" com { "text": "...", "lang": "fr|pt|es|en|zh|..." }.
+   - IMPORTANTE : detecte o idioma da pergunta do usuário e responda EXCLUSIVAMENTE nesse idioma no campo "text".
+     Exemplos : pergunta em francês → lang="fr", text em francês. Pergunta em português → lang="pt", text em português.
+     Pergunta em espanhol → lang="es", text em espanhol. Etc.
    - Responda concretamente à pergunta em 2-4 frases, com base na foto e no seu conhecimento do mercado BR.
    - Se a pergunta menciona "uma pessoa" ou "sozinho", estime o tempo/dificuldade para 1 trabalhador com ferramentas standard.
 

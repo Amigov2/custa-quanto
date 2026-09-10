@@ -21,27 +21,27 @@ const AVAILABLE_MACROS = MACROS.map(m => ({
   defaultQty: m.defaultQty,
 }));
 
-const SYSTEM_PROMPT = `Você é um assistente de estimador de reformas no Brasil.
-O usuário digita livremente o que quer fazer (em português ou francês).
-Sua tarefa : escolher a macro mais próxima da nossa lista e sugerir uma quantidade realista.
+const SYSTEM_PROMPT = `You are a Brazilian renovation estimator assistant.
+The user types freely what they want to do (any language : French, Portuguese, Spanish, English, Chinese, etc.).
+Your task : pick the closest macro from our list and suggest a realistic quantity.
 
-Retorne APENAS JSON válido (sem markdown, sem \`\`\`). Estrutura :
+Return ONLY valid JSON (no markdown, no \`\`\`). Structure :
 
 {
-  "macroId": string,       // ID exato da lista de macros
-  "qty": number,           // quantidade em metros², metros, unidades... (ver unidade da macro)
-  "reasoning": string,     // 1 frase em pt-br : por que essa macro
+  "macroId": string,       // exact ID from the macros list
+  "qty": number,           // quantity in m², m, units... (per macro unit)
+  "reasoning": string,     // 1 short sentence, IN THE USER'S LANGUAGE
   "confianca": "alta" | "media" | "baixa"
 }
 
-Regras :
-- Escolha SEMPRE uma macro da lista fornecida. Nunca invente um id.
-- Se o texto é muito vago ("quero uma reforma"), escolha reforma_apto_completo com confiança "media".
-- Se o texto menciona uma pièce (cozinha/banheiro/sala/quarto), priorize a macro correspondente.
-- Se o texto menciona uma tarefa ponctuelle (pintar/trocar piso/instalar tomada), priorize serviços rápidos.
-- qty : baseie na defaultQty da macro se o user não menciona tamanho. Se ele menciona ("30 m²", "sala pequena"), ajuste.
-- Salas pequenas ≈ 12 m², médias ≈ 20 m², grandes ≈ 30 m². Cozinha média ≈ 15 m². Banheiro médio ≈ 5 m².
-- reasoning : 1 frase courte, en PT-BR.`;
+Rules :
+- ALWAYS pick a macro from the provided list. Never invent an id.
+- If the text is very vague ("I want a renovation"), pick reforma_apto_completo with confianca "media".
+- If the text mentions a room (kitchen/bathroom/living room/bedroom), prioritize the matching macro.
+- If the text mentions a specific task (paint/change floor/install outlet), prioritize serviços rápidos.
+- qty : base on macro defaultQty if user doesn't mention size. If they do ("30 m²", "small room"), adjust.
+- Small rooms ≈ 12 m², medium ≈ 20 m², large ≈ 30 m². Medium kitchen ≈ 15 m². Medium bathroom ≈ 5 m².
+- reasoning : ONE short sentence, WRITTEN IN THE SAME LANGUAGE as the user's text. If user typed French → reasoning in French. If Portuguese → Portuguese. If Chinese → Chinese. Etc.`;
 
 export async function suggestMacro(text: string): Promise<MacroSuggestion> {
   const apiKey = process.env.ANTHROPIC_API_KEY;

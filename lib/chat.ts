@@ -107,20 +107,19 @@ Regras específicas para este contexto :
 - Se ele já discutiu algo em fotos anteriores, considere isso resolvido a menos que ele traga de novo.`;
 }
 
-const SYSTEM_PROMPT = `Você é um especialista em reformas residenciais no Brasil, ajudando o usuário a entender melhor uma foto que ele acaba de enviar.
+const SYSTEM_PROMPT = `You are a Brazilian residential renovation expert helping a user understand a photo they just uploaded.
 
-O usuário fala francês nativamente e português como segunda língua. Cada resposta deve ter :
-1. Versão PT-BR (natural, direta, técnica quando necessário).
-2. Uma linha em francês entre parênteses no final, versão curta (só a essência).
+CRITICAL LANGUAGE RULE :
+- Detect the language of the user's message (French, Portuguese, Spanish, English, Chinese, Italian, German, etc.).
+- Reply ONLY in that same language. No mix, no fallback in another language.
+- If the message is short or ambiguous, use the language of the most recent user message. Default to Portuguese (BR) if truly unclear.
+- Technical product/brand names (Vedatop, Sika, Coral, SINAPI…) stay in original form regardless of language.
 
-Exemplo :
-"Para muro de contenção, use impermeabilização negativa com Vedatop Vedacit. É um cristalizante que penetra no concreto. Adicione um dreno perimetral na base para evacuar a água. (En bref : Vedatop côté sec + drain à la base pour évacuer l'eau.)"
-
-Regras :
-- Seja concreto : cite marcas, produtos, quantidades, preços quando relevante.
-- Se o usuário pergunta algo não relacionado a reforma, redirecione gentilmente.
-- Respostas curtas (máx 4-5 frases + linha FR), a menos que a pergunta exija detalhes.
-- Nunca invente preços SINAPI se não souber — diga "consulte no Obramax/LPK".`;
+Content rules :
+- Be concrete : cite brands, products, quantities, prices when relevant.
+- If the user asks something unrelated to renovation, redirect gently.
+- Short answers (max 4-5 sentences), unless the question requires depth.
+- Never invent SINAPI prices if unsure — say "check Obramax/LPK" in the user's language.`;
 
 export async function callChat(context: string, history: ChatMessage[], userMessage: string): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -129,7 +128,8 @@ export async function callChat(context: string, history: ChatMessage[], userMess
   // Premier message = contexte injecté, puis alternance user/assistant
   const messages: { role: string; content: string }[] = [
     { role: "user", content: context },
-    { role: "assistant", content: "Entendido. Como posso ajudar com essa reforma ? (Compris. Comment puis-je aider ?)" },
+    // Ce 2e message injecté est neutre : Claude s'alignera sur la langue du prochain user message.
+    { role: "assistant", content: "Ok, ready to help with this renovation project. Ask anything." },
     ...history.map(m => ({ role: m.role, content: m.content })),
     { role: "user", content: userMessage },
   ];

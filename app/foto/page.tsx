@@ -480,24 +480,31 @@ function FotoPageInner() {
               </div>
             )}
 
-            {/* Réponse à la question de l'user (si il en a posée une dans le scope) */}
-            {analysis.resposta_ao_usuario && analysis.resposta_ao_usuario.pt && (
-              <div className="card-outlined p-4 border-[color:var(--color-accent)]">
-                <div className="flex items-start gap-3">
-                  <span className="accordion-icon bg-[color:var(--color-accent-soft)]">💬</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-1">
-                      Resposta à sua pergunta
-                      <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Réponse à ta question</span>
-                    </p>
-                    <p className="text-[13px] leading-relaxed">{analysis.resposta_ao_usuario.pt}</p>
-                    {analysis.resposta_ao_usuario.fr && (
-                      <p className="text-[12px] text-[color:var(--color-ink-2)] italic leading-relaxed mt-1">{analysis.resposta_ao_usuario.fr}</p>
-                    )}
+            {/* Réponse à la question du user dans SA langue (nouveau schema { text, lang })
+                avec fallback sur l'ancien { pt, fr } pour les analyses pré-2026-09. */}
+            {(() => {
+              const r = analysis.resposta_ao_usuario;
+              if (!r) return null;
+              const mainText = r.text || r.pt;
+              const legacyFr = !r.text ? r.fr : undefined;
+              if (!mainText) return null;
+              return (
+                <div className="card-outlined p-4 border-[color:var(--color-accent)]">
+                  <div className="flex items-start gap-3">
+                    <span className="accordion-icon bg-[color:var(--color-accent-soft)]">💬</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-1">
+                        Resposta {r.lang ? <span className="ml-1 font-normal normal-case tracking-normal text-[10px] text-[color:var(--color-muted)]">({r.lang})</span> : null}
+                      </p>
+                      <p className="text-[13px] leading-relaxed">{mainText}</p>
+                      {legacyFr && (
+                        <p className="text-[12px] text-[color:var(--color-ink-2)] italic leading-relaxed mt-1">{legacyFr}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Ambiente — cliquable pour override si l'IA se trompe */}
             {(() => {
