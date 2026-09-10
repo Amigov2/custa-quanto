@@ -11,6 +11,7 @@ import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
 import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import { saveLearning, summarizeLearnings, countLearnings } from "@/lib/learnings";
+import { summarizePreferences, countPreferenceSignals } from "@/lib/preferences";
 import CreditsBadge from "@/app/components/CreditsBadge";
 
 type Step = "idle" | "preview" | "analyzing" | "result" | "error";
@@ -170,9 +171,12 @@ export default function FotoPage() {
       const form = new FormData();
       form.append("photo", file);
       if (userScope.trim()) form.append("scope", userScope.trim());
-      // Injecte les apprentissages accumulés (corrections passées) pour calibrer l'IA sur cet user.
+      // Injecte les apprentissages accumulés (corrections passées) + préférences détectées.
+      // On les concatène pour envoyer un seul champ "context" plus digeste à l'API.
       const learnings = summarizeLearnings();
-      if (learnings) form.append("learnings", learnings);
+      const preferences = summarizePreferences();
+      const combined = [learnings, preferences].filter(Boolean).join("");
+      if (combined) form.append("learnings", combined);
       const res = await fetch("/api/analyze-photo", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao analisar.");
@@ -348,10 +352,14 @@ export default function FotoPage() {
               💡 Tire com boa iluminação, mostrando o máximo do cômodo. Inclua uma porta ou móvel se possível — ajuda para estimar tamanho.
             </p>
 
-            {learningsCount >= 3 && (
+            {(learningsCount >= 3 || countPreferenceSignals() >= 3) && (
               <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[color:var(--color-accent)]">
                 <span>🧠</span>
-                <span>A IA aprendeu com suas {learningsCount} correções anteriores</span>
+                <span>
+                  A IA aprendeu com você
+                  {learningsCount > 0 ? ` · ${learningsCount} correções` : ""}
+                  {countPreferenceSignals() > 0 ? ` · ${countPreferenceSignals()} preferências detectadas` : ""}
+                </span>
               </div>
             )}
 
@@ -996,19 +1004,21 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
   // d'autres photos, on injecte tout l'historique du chantier (fotos + conversas).
   // Sinon fallback sur l'ancien contexte simple (analyse courante seule).
   const { context, memoryStats } = useMemo(() => {
+    // Préférences du user (détectées passivement depuis chats, scopes, feedbacks).
+    const prefsSummary = summarizePreferences();
     const currentPhoto = photoId ? getPhoto(photoId) : undefined;
     if (!currentPhoto || !currentPhoto.chantierId) {
-      return { context: analysisContext(analysis), memoryStats: null };
+      return { context: analysisContext(analysis) + prefsSummary, memoryStats: null };
     }
     const chantier = loadChantiers().find(c => c.id === currentPhoto.chantierId);
     const chantierPhotos = getPhotosByChantier(currentPhoto.chantierId);
     const otherPhotos = chantierPhotos.filter(p => p.id !== currentPhoto.id);
     if (otherPhotos.length === 0) {
-      return { context: analysisContext(analysis), memoryStats: null };
+      return { context: analysisContext(analysis) + prefsSummary, memoryStats: null };
     }
     const nExchanges = chantierPhotos.reduce((s, p) => s + Math.ceil((p.chatHistory?.length ?? 0) / 2), 0);
     return {
-      context: chantierMemoryContext(chantier?.name || "Chantier", currentPhoto, otherPhotos),
+      context: chantierMemoryContext(chantier?.name || "Chantier", currentPhoto, otherPhotos) + prefsSummary,
       memoryStats: { nPhotos: chantierPhotos.length, nExchanges },
     };
   }, [analysis, photoId]);
