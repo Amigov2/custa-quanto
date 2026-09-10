@@ -27,7 +27,10 @@ export async function POST(req: NextRequest) {
     // Anthropic n'accepte pas heic/heif — convertir en jpeg côté client si besoin
     const mediaType = file.type === "image/heic" || file.type === "image/heif" ? "image/jpeg" : file.type;
 
-    const analysis = await analyzePhoto(base64, mediaType);
+    const rawScope = form.get("scope");
+    const scope = typeof rawScope === "string" ? rawScope.slice(0, 500) : undefined;
+
+    const analysis = await analyzePhoto(base64, mediaType, scope);
     return NextResponse.json({ analysis });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

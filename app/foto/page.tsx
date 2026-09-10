@@ -8,6 +8,7 @@ import type { PhotoAnalysis } from "@/lib/vision";
 import { analysisContext, type ChatMessage } from "@/lib/chat";
 import { deductCredit, getCredits, hasCredits } from "@/lib/credits";
 import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/lib/share";
+import { savePhoto, getDrafts, deletePhoto, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import CreditsBadge from "@/app/components/CreditsBadge";
 
 type Step = "idle" | "preview" | "analyzing" | "result" | "error";
@@ -56,6 +57,22 @@ async function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise
   return new File([blob], name, { type: "image/jpeg" });
 }
 
+// Vignette 512px WebP q0.7 → ~20-40 KB en base64 dans localStorage.
+async function makeThumbnail(file: File, maxDim = 512, quality = 0.7): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const w = Math.round(bitmap.width * scale);
+  const h = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas ctx null");
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close?.();
+  return canvas.toDataURL("image/webp", quality);
+}
+
 export default function FotoPage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -69,31 +86,38 @@ export default function FotoPage() {
   const [editedM2, setEditedM2] = useState<number>(0);
   const [confirmedM2, setConfirmedM2] = useState<boolean>(false);
   const [chatOpen, setChatOpen] = useState<boolean>(false);
+  const [userScope, setUserScope] = useState<string>("");
+  const [photoId, setPhotoId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<PhotoRecord[]>([]);
+  const [overrideAmbiente, setOverrideAmbiente] = useState<PhotoAnalysis["ambiente"] | null>(null);
+  const [ambientePickerOpen, setAmbientePickerOpen] = useState<boolean>(false);
 
-  // Restore dernière analyse depuis localStorage au mount
+  // Nettoie l'ancienne clé "cq_last_photo_analysis" (avant migration vers cq_photos).
+  // Puis charge les brouillons (photos analysées mais non rattachées à un chantier)
+  // et écoute les changements pour les rafraîchir en temps réel.
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("cq_last_photo_analysis");
-      if (raw) {
-        const saved = JSON.parse(raw);
-        if (saved.analysis) {
-          setAnalysis(saved.analysis);
-          setEditedM2(saved.editedM2 || 0);
-          setConfirmedM2(saved.confirmedM2 || false);
-          setStep("result");
-        }
-      }
-    } catch {}
+    localStorage.removeItem("cq_last_photo_analysis");
+    setDrafts(getDrafts());
+    return onPhotosChange(() => setDrafts(getDrafts()));
   }, []);
 
-  // Save chaque fois que l'analyse ou l'état m² change
-  useEffect(() => {
-    if (analysis) {
-      localStorage.setItem("cq_last_photo_analysis", JSON.stringify({
-        analysis, editedM2, confirmedM2, savedAt: Date.now(),
-      }));
-    }
-  }, [analysis, editedM2, confirmedM2]);
+  function openDraft(rec: PhotoRecord) {
+    setPhotoId(rec.id);
+    setAnalysis(rec.analysis);
+    setUserScope(rec.userScope);
+    setPreviewUrl(rec.thumbnail);
+    setFile(null);
+    const conf = rec.analysis.tamanho_confianca;
+    setEditedM2(conf === "alta" ? rec.analysis.tamanho_estimado_m2 : 0);
+    setConfirmedM2(false);
+    setStep("result");
+  }
+
+  function removeDraft(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (!confirm("Excluir este rascunho?")) return;
+    deletePhoto(id);
+  }
 
   function pickFile() {
     inputRef.current?.click();
@@ -127,6 +151,7 @@ export default function FotoPage() {
     try {
       const form = new FormData();
       form.append("photo", file);
+      if (userScope.trim()) form.append("scope", userScope.trim());
       const res = await fetch("/api/analyze-photo", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erro ao analisar.");
@@ -136,6 +161,20 @@ export default function FotoPage() {
       const conf = data.analysis.tamanho_confianca;
       setEditedM2(conf === "alta" ? data.analysis.tamanho_estimado_m2 : 0);
       setConfirmedM2(false);
+      // Sauve l'analyse dans l'historique (brouillon, non rattaché à un chantier).
+      try {
+        const thumbnail = await makeThumbnail(file);
+        const saved = savePhoto({
+          chantierId: null,
+          thumbnail,
+          analysis: data.analysis,
+          userScope: userScope.trim(),
+        });
+        setPhotoId(saved.id);
+      } catch (thumbErr) {
+        // Vignette optionnelle : on ne bloque pas le flux si elle échoue.
+        console.warn("Thumbnail generation failed:", thumbErr);
+      }
       setStep("result");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -152,7 +191,8 @@ export default function FotoPage() {
     setError("");
     setEditedM2(0);
     setConfirmedM2(false);
-    localStorage.removeItem("cq_last_photo_analysis");
+    setUserScope("");
+    setPhotoId(null);
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -254,6 +294,51 @@ export default function FotoPage() {
             <p className="text-[11px] text-[color:var(--color-muted)] text-center mt-4 leading-snug">
               💡 Tire com boa iluminação, mostrando o máximo do cômodo. Inclua uma porta ou móvel se possível — ajuda para estimar tamanho.
             </p>
+
+            {drafts.length > 0 && (
+              <div className="mt-8">
+                <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
+                  Rascunhos <span className="text-[10px] normal-case tracking-normal opacity-70">· non vinculadas a um chantier ({drafts.length})</span>
+                </p>
+                <div className="space-y-2">
+                  {drafts.map(rec => {
+                    const ambienteKey = rec.analysis.ambiente;
+                    const amb = AMBIENTE_LABEL[ambienteKey];
+                    const date = new Date(rec.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+                    const nItens = rec.analysis.itens_detectados?.length ?? 0;
+                    return (
+                      <button
+                        key={rec.id}
+                        onClick={() => openDraft(rec)}
+                        className="w-full flex items-center gap-3 p-2 rounded-2xl border border-[color:var(--color-line)] hover:border-[color:var(--color-accent)] transition text-left"
+                      >
+                        <img
+                          src={rec.thumbnail}
+                          alt=""
+                          className="w-14 h-14 rounded-xl object-cover shrink-0 bg-[color:var(--color-bg-2)]"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold truncate">
+                            {amb.emoji} {amb.pt} · {rec.analysis.tamanho_estimado_m2} m²
+                          </p>
+                          <p className="text-[11px] text-[color:var(--color-muted)] truncate">
+                            {rec.userScope ? `“${rec.userScope}”` : `${nItens} itens detectados`} · {date}
+                          </p>
+                        </div>
+                        <span
+                          onClick={e => removeDraft(e, rec.id)}
+                          className="text-[11px] text-[color:var(--color-muted)] px-2 py-1 hover:text-[#ff3b30]"
+                          role="button"
+                          aria-label="Excluir rascunho"
+                        >
+                          ✕
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -262,6 +347,22 @@ export default function FotoPage() {
             <div className="rounded-2xl overflow-hidden mb-4 border border-[color:var(--color-line)]">
               <img src={previewUrl} alt="Preview" className="w-full h-auto" />
             </div>
+            <label className="block mb-4">
+              <span className="block text-[13px] font-medium mb-1.5">
+                Escopo ou pergunta
+                <span className="text-[color:var(--color-muted)] font-normal"> · Scope ou question</span>
+              </span>
+              <textarea
+                value={userScope}
+                onChange={e => setUserScope(e.target.value.slice(0, 500))}
+                rows={3}
+                placeholder="Ex: só pintar as paredes. Ou: quanto tempo leva para 1 pessoa? Ou os dois."
+                className="w-full rounded-2xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-2)] px-4 py-3 text-[14px] resize-none focus:outline-none focus:border-[color:var(--color-accent)]"
+              />
+              <span className="block text-[11px] text-[color:var(--color-muted)] mt-1">
+                {userScope.length}/500 · a IA respeita seu escopo E responde suas perguntas
+              </span>
+            </label>
             <div className="flex gap-2">
               <button onClick={reset} className="flex-1 py-3 text-[14px] font-medium text-[color:var(--color-muted)] rounded-2xl border border-[color:var(--color-line)]">
                 Trocar
@@ -308,21 +409,84 @@ export default function FotoPage() {
               </div>
             )}
 
-            {/* Ambiente */}
-            <div className="card-outlined p-4">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">{AMBIENTE_LABEL[analysis.ambiente].emoji}</span>
-                <div className="flex-1">
-                  <p className="text-[16px] font-semibold leading-tight">{AMBIENTE_LABEL[analysis.ambiente].pt}</p>
-                  <p className="text-[11px] text-[color:var(--color-ink-2)] opacity-95 leading-tight">{AMBIENTE_LABEL[analysis.ambiente].fr}</p>
+            {/* Réponse à la question de l'user (si il en a posée une dans le scope) */}
+            {analysis.resposta_ao_usuario && analysis.resposta_ao_usuario.pt && (
+              <div className="card-outlined p-4 border-[color:var(--color-accent)]">
+                <div className="flex items-start gap-3">
+                  <span className="accordion-icon bg-[color:var(--color-accent-soft)]">💬</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-1">
+                      Resposta à sua pergunta
+                      <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Réponse à ta question</span>
+                    </p>
+                    <p className="text-[13px] leading-relaxed">{analysis.resposta_ao_usuario.pt}</p>
+                    {analysis.resposta_ao_usuario.fr && (
+                      <p className="text-[12px] text-[color:var(--color-ink-2)] italic leading-relaxed mt-1">{analysis.resposta_ao_usuario.fr}</p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Ambiente — cliquable pour override si l'IA se trompe */}
+            {(() => {
+              const currentAmb = overrideAmbiente ?? analysis.ambiente;
+              const label = AMBIENTE_LABEL[currentAmb];
+              return (
+                <div className="card-outlined">
+                  <button
+                    type="button"
+                    onClick={() => setAmbientePickerOpen(v => !v)}
+                    className="w-full p-4 flex items-center gap-3 text-left"
+                  >
+                    <span className="text-3xl">{label.emoji}</span>
+                    <div className="flex-1">
+                      <p className="text-[16px] font-semibold leading-tight">{label.pt}</p>
+                      <p className="text-[11px] text-[color:var(--color-ink-2)] opacity-95 leading-tight">{label.fr}</p>
+                    </div>
+                    <span className="text-[11px] text-[color:var(--color-accent)] font-medium">
+                      {ambientePickerOpen ? "Fechar" : (overrideAmbiente ? "Alterado ✓" : "Não é isso?")}
+                    </span>
+                  </button>
+                  {ambientePickerOpen && (
+                    <div className="px-4 pb-4 pt-1 border-t border-[color:var(--color-line)]">
+                      <p className="text-[11px] text-[color:var(--color-muted)] mb-2 mt-2">
+                        Escolha o tipo correto · Choisis le bon type
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(Object.keys(AMBIENTE_LABEL) as PhotoAnalysis["ambiente"][]).map(key => {
+                          const opt = AMBIENTE_LABEL[key];
+                          const active = key === currentAmb;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => {
+                                setOverrideAmbiente(key === analysis.ambiente ? null : key);
+                                setAmbientePickerOpen(false);
+                              }}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[13px] font-medium transition ${
+                                active
+                                  ? "bg-[color:var(--color-accent)] text-white"
+                                  : "bg-[color:var(--color-bg-2)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-line)]"
+                              }`}
+                            >
+                              <span>{opt.emoji}</span>
+                              <span className="truncate">{opt.pt}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Métrage — bloc distinct avec garde-fou strict */}
             <div className={`card-outlined p-4 ${confirmedM2 ? "border-[#34c759]" : "border-[color:var(--color-accent)]"}`}>
               <div className="flex items-baseline justify-between mb-2">
-                <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
+                <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
                   Tamanho real
                   <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Surface réelle · à mesurer</span>
                 </p>
@@ -391,7 +555,7 @@ export default function FotoPage() {
             {/* Itens detectados */}
             {analysis.itens_detectados.length > 0 && (
               <div>
-                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-2">
+                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-2">
                   O que precisa ser feito
                   <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Ce qu'il faut faire</span>
                 </p>
@@ -418,14 +582,17 @@ export default function FotoPage() {
               </div>
             )}
 
-            {/* Produtos recomendados */}
+            {/* Produtos recomendados — accordéon fermé par défaut (long) */}
             {analysis.produtos_recomendados.length > 0 && (
-              <div>
-                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-2">
-                  Produtos recomendados
-                  <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Produits recommandés</span>
-                </p>
-                <div className="space-y-2">
+              <details className="accordion">
+                <summary>
+                  <span className="accordion-icon bg-[#fff4e6]">🧴</span>
+                  <span className="flex-1">
+                    <span className="block text-[14px] font-semibold leading-tight">Produtos recomendados</span>
+                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.produtos_recomendados.length} recomandações · Produits recommandés</span>
+                  </span>
+                </summary>
+                <div className="accordion-body space-y-2 pt-3">
                   {analysis.produtos_recomendados.map((prod, i) => {
                     const superficie = confirmedM2 ? editedM2 : 0;
                     const rend = prod.rendimento_m2_por_unidade || 1;
@@ -532,17 +699,21 @@ export default function FotoPage() {
                     );
                   })}
                 </div>
-              </div>
+              </details>
             )}
 
-            {/* Passo a passo */}
+            {/* Passo a passo — accordéon fermé par défaut */}
             {analysis.passo_a_passo.length > 0 && (
-              <div>
-                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-2">
-                  Como aplicar
-                  <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Comment appliquer</span>
-                </p>
-                <div className="card-outlined p-4 space-y-3">
+              <details className="accordion">
+                <summary>
+                  <span className="accordion-icon bg-[#e8f2ff]">📋</span>
+                  <span className="flex-1">
+                    <span className="block text-[14px] font-semibold leading-tight">Como aplicar</span>
+                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.passo_a_passo.length} passos · Comment appliquer</span>
+                  </span>
+                </summary>
+                <div className="accordion-body pt-3">
+                <div className="space-y-3">
                   {analysis.passo_a_passo.map(step => (
                     <div key={step.passo} className="flex items-start gap-3">
                       <span className="w-6 h-6 rounded-full bg-[color:var(--color-accent)]/10 text-[color:var(--color-accent)] text-[11px] font-bold flex items-center justify-center shrink-0 num">
@@ -561,13 +732,14 @@ export default function FotoPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+                </div>
+              </details>
             )}
 
             {/* Macros sugeridas — DÉSACTIVÉES tant que m² non confirmé */}
             {analysis.macros_sugeridas.length > 0 && (
               <div>
-                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-2">
+                <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-2">
                   Criar orçamento
                   <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Créer un devis</span>
                 </p>
@@ -621,21 +793,29 @@ export default function FotoPage() {
               </div>
             )}
 
-            {/* Observações */}
+            {/* Observações — accordéon fermé */}
             {analysis.observacoes.length > 0 && (
-              <div className="rounded-xl bg-[color:var(--color-bg-2)] p-3">
-                <p className="text-[11px] text-[color:var(--color-muted)] uppercase tracking-wide font-medium mb-1.5">💡 Observações</p>
-                <ul className="space-y-2">
-                  {analysis.observacoes.map((o, i) => (
-                    <li key={i} className="text-[12px] text-[color:var(--color-muted)] leading-relaxed">
-                      • {o}
-                      {analysis.observacoes_fr?.[i] && (
-                        <span className="block text-[11px] opacity-95 text-[color:var(--color-ink-2)] italic ml-2 mt-0.5">{analysis.observacoes_fr[i]}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <details className="accordion">
+                <summary>
+                  <span className="accordion-icon bg-[#fff9db]">💡</span>
+                  <span className="flex-1">
+                    <span className="block text-[14px] font-semibold leading-tight">Observações</span>
+                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.observacoes.length} pontos · Remarques</span>
+                  </span>
+                </summary>
+                <div className="accordion-body pt-3">
+                  <ul className="space-y-2">
+                    {analysis.observacoes.map((o, i) => (
+                      <li key={i} className="text-[12px] text-[color:var(--color-muted)] leading-relaxed">
+                        • {o}
+                        {analysis.observacoes_fr?.[i] && (
+                          <span className="block text-[11px] opacity-95 text-[color:var(--color-ink-2)] italic ml-2 mt-0.5">{analysis.observacoes_fr[i]}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
             )}
 
             {/* Partage WhatsApp */}

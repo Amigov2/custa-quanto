@@ -135,7 +135,7 @@ export default function ContasPage() {
         {/* Breakdown par phase */}
         {progress!.byPhase.length > 0 && (
           <div className="px-6 mb-8 fade-in fade-in-2">
-            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-3 px-2">
+            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
               Por fase
             </p>
             <div className="card-outlined p-4 space-y-4">
@@ -184,7 +184,7 @@ export default function ContasPage() {
         {/* Liste chronologique */}
         <div className="px-6 mb-8 fade-in fade-in-3">
           <div className="flex items-center justify-between mb-3 px-2">
-            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
+            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
               Registros
             </p>
             {payments.length > 0 && (
@@ -351,7 +351,7 @@ function AddPaymentModal({
 
         {/* Valor grand */}
         <div className="mb-6 text-center">
-          <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2">
+          <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2">
             Valor
           </p>
           <div className="flex items-baseline justify-center gap-2">
@@ -370,7 +370,7 @@ function AddPaymentModal({
 
         {/* Tipo */}
         <div className="mb-5">
-          <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-1">
+          <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
             Tipo
           </p>
           <div className="grid grid-cols-3 gap-2">
@@ -400,7 +400,7 @@ function AddPaymentModal({
         {/* Fase */}
         {activePhases.length > 0 && (
           <div className="mb-5">
-            <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-1">
+            <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
               Fase <span className="text-[color:var(--color-muted)] normal-case">(opcional)</span>
             </p>
             <div className="flex flex-wrap gap-2">
@@ -442,7 +442,7 @@ function AddPaymentModal({
 
         {/* Nota */}
         <div className="mb-2">
-          <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-1">
+          <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
             Nota <span className="text-[color:var(--color-muted)] normal-case">(opcional)</span>
           </p>
           <input

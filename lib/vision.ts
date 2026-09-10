@@ -60,6 +60,7 @@ export type PhotoAnalysis = {
   passo_a_passo: PhotoAnalysisStep[];
   observacoes: string[];
   observacoes_fr: string[];
+  resposta_ao_usuario?: { pt: string; fr: string };  // rempli si le user posait une question dans son scope
 };
 
 const AVAILABLE_MACRO_IDS = Object.keys(MACRO_FR);
@@ -101,7 +102,8 @@ Estrutura obrigatória :
     { "passo": number, "titulo": string, "titulo_fr": string, "descricao": string, "descricao_fr": string }
   ],
   "observacoes": [string],
-  "observacoes_fr": [string]
+  "observacoes_fr": [string],
+  "resposta_ao_usuario": { "pt": string, "fr": string } // OPCIONAL — apenas se o usuário fez uma pergunta
 }
 
 REGRA CRÍTICA sobre tamanho :
@@ -137,11 +139,38 @@ ${AVAILABLE_MACRO_IDS.join(", ")}
 observacoes :
 - Sempre inclua uma advertência sobre a necessidade de medir com trena/metro para ter o tamanho preciso.`;
 
-export async function analyzePhoto(imageBase64: string, mediaType: string): Promise<PhotoAnalysis> {
+export async function analyzePhoto(imageBase64: string, mediaType: string, scope?: string): Promise<PhotoAnalysis> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new Error("ANTHROPIC_API_KEY não configurada. Adicione em .env.local.");
   }
+
+  // Si l'utilisateur décrit un scope précis, on force Claude à s'y limiter.
+  // Sans scope → comportement historique (analyse complète).
+  const userText = scope && scope.trim()
+    ? `Analise esta foto e retorne o JSON conforme a estrutura definida.
+
+TEXTO DO USUÁRIO (pode ser um escopo, uma pergunta, ou ambos) :
+"${scope.trim()}"
+
+Regras :
+
+1) Se o texto DESCREVE um escopo de trabalho (ex: "só pintar as paredes", "trocar o piso") :
+   - itens_detectados : liste APENAS o que o usuário quer fazer (ignore tudo o resto na foto).
+   - macros_sugeridas : só macros que correspondem ao escopo (ex: se só pintar, NÃO sugira "reforma completa").
+   - produtos_recomendados : apenas para os serviços descritos.
+   - passo_a_passo : só para os trabalhos descritos.
+   - Se o escopo pede algo que não é visível na foto, mencione em observações.
+
+2) Se o texto CONTÉM UMA PERGUNTA (ex: "quanto tempo leva pra uma pessoa?", "posso fazer sozinho?", "qual é o melhor material?") :
+   - PREENCHA OBRIGATORIAMENTE o campo "resposta_ao_usuario" com { "pt": "...", "fr": "..." }.
+   - Responda concretamente à pergunta em 2-4 frases, com base na foto e no seu conhecimento do mercado BR.
+   - Se a pergunta menciona "uma pessoa" ou "sozinho", estime o tempo/dificuldade para 1 trabalhador com ferramentas standard.
+
+3) Se o texto for AMBOS (escopo + pergunta), aplique as duas regras.
+
+4) Se não há pergunta clara, NÃO preencha "resposta_ao_usuario" (deixe undefined).`
+    : "Analise esta foto e retorne o JSON conforme a estrutura definida.";
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -168,7 +197,7 @@ export async function analyzePhoto(imageBase64: string, mediaType: string): Prom
             },
             {
               type: "text",
-              text: "Analise esta foto e retorne o JSON conforme a estrutura definida.",
+              text: userText,
             },
           ],
         },

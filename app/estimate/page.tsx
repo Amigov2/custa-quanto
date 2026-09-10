@@ -155,7 +155,7 @@ export default function EstimatePage() {
         </div>
         {step === "detail" && (
           <div className="px-6 pb-2 flex items-center justify-between border-t border-[color:var(--color-line)] pt-2">
-            <span className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
+            <span className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
               Total live
             </span>
             <div className="flex items-baseline gap-2">
@@ -346,7 +346,7 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
         filteredByGroup.map((g, gi) => (
           <div key={g.id} className={`px-6 mb-8 fade-in fade-in-${gi + 2}`}>
             <div className="mb-3 px-2">
-              <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">{g.label}</p>
+              <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">{g.label}</p>
               <p className="text-[11px] text-[color:var(--color-muted)] mt-0.5">{g.desc}</p>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -416,7 +416,7 @@ function PickQuantity({
       </div>
 
       <div className="px-6 mb-8 fade-in fade-in-1">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-3 px-2">
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
           Qual o tamanho?
           <span className="block normal-case tracking-normal text-[10px] opacity-70 font-normal">Quelle taille ?</span>
         </p>
@@ -735,7 +735,7 @@ function Detail({
 
       {/* Finish */}
       <div className="px-6 mb-8 fade-in fade-in-3">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-3 px-2">Acabamento global</p>
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">Acabamento global</p>
         <div className="segmented">
           {FINISH_LABELS.map(f => (
             <button key={f.id} onClick={() => setFinish(f.id)} className={`seg-btn ${finish === f.id ? "active" : ""}`}>
@@ -747,7 +747,7 @@ function Detail({
 
       {/* Services detail */}
       <div className="px-6 mb-6 fade-in fade-in-4">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-3 px-2">
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
           Detalhamento por poste ({enabledCount}/{posts.length})
         </p>
         <div className="space-y-3">
@@ -905,7 +905,7 @@ function Detail({
 
       {/* Material list */}
       <div className="px-6 mb-8 fade-in fade-in-5">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-3 px-2">
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
           Lista de material {config.materialMode === "client" ? "(cliente compra)" : "(empreiteiro fornece)"}
         </p>
         <div className="space-y-3">
@@ -1056,7 +1056,7 @@ function PhaseTimelineSection({ chantierEst }: { chantierEst: ReturnType<typeof 
   return (
     <div className="px-6 mb-6 fade-in fade-in-2">
       <div className="flex items-center justify-between mb-3 px-2">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">Cronograma</p>
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">Cronograma</p>
         <p className="text-[11px] text-[color:var(--color-muted)] num">{Math.round(totalDays)} dias · {activePhases.length} fase{activePhases.length > 1 ? "s" : ""}</p>
       </div>
       <div className="card-outlined p-5">
@@ -1147,7 +1147,7 @@ function CompareModal({
         </div>
         <div className="p-5 space-y-5 overflow-y-auto">
           <div>
-            <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-1.5 block px-1">
+            <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-1.5 block px-1">
               Valor total do orçamento (R$)
             </label>
             <input
@@ -1162,7 +1162,7 @@ function CompareModal({
           </div>
 
           <div>
-            <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-1">
+            <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
               Detalhamento por poste (opcional)
             </p>
             <div className="segmented">
@@ -1259,7 +1259,7 @@ function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; 
 
           {result.perPost && result.perPost.length > 0 && (
             <div>
-              <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-2 px-1">
+              <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
                 Detalhamento por poste
               </p>
               <div className="space-y-1.5">
@@ -1323,7 +1323,7 @@ function SaveChantierModal({
           </p>
         </div>
         <div className="px-5 pb-5">
-          <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-1.5 block px-1">Nome</label>
+          <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-1.5 block px-1">Nome</label>
           <input
             type="text"
             value={name}
@@ -1374,7 +1374,7 @@ function PtFr({
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-[color:var(--color-bg-2)] rounded-lg p-2 text-center">
-      <p className="text-[9px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium truncate">{label}</p>
+      <p className="text-[9px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium truncate">{label}</p>
       <p className="text-[12px] font-semibold num mt-0.5 leading-tight">{value}</p>
     </div>
   );

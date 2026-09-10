@@ -61,7 +61,7 @@ export default function HomePage() {
 
         {chantiers.length > 0 ? (
           <div className="px-6 mb-8 fade-in fade-in-2">
-            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-3 px-2">
+            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
               Salvos
             </p>
             <div className="space-y-3">
