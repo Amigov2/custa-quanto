@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzePhoto, type ImageInput } from "@/lib/vision";
 
 export const runtime = "nodejs";
-export const maxDuration = 45; // multi-photos peut prendre plus de temps
+export const maxDuration = 60; // multi-photos jusqu'à 10 peut prendre 30-60s côté Claude
 
 const MAX_SIZE_PER_FILE = 8 * 1024 * 1024; // 8 MB par photo
-const MAX_TOTAL_SIZE = 30 * 1024 * 1024;   // 30 MB total tous fichiers
-const MAX_FILES = 10;
+const MAX_TOTAL_SIZE = 15 * 1024 * 1024;   // 15 MB total (compression client fait la vraie limite)
+const MAX_FILES = 5;                         // limite forcée par timeout Vercel 60s sur Vision
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 
 export async function POST(req: NextRequest) {

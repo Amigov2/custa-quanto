@@ -25,8 +25,9 @@ export default function HomePage() {
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [ready, setReady] = useState(false);
 
-  // Input hybride
-  const MAX_PHOTOS = 10;
+  // Input hybride — 5 max par analyse (au delà, timeout Vercel 60s dépassé sur Vision).
+  // L user peut ajouter d autres photos APRÈS création du chantier via /contas timeline.
+  const MAX_PHOTOS = 5;
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -84,7 +85,7 @@ export default function HomePage() {
     setError("");
     const remaining = MAX_PHOTOS - files.length;
     if (remaining <= 0) {
-      setError(`Máximo ${MAX_PHOTOS} fotos por análise. Retire uma para adicionar outra.`);
+      setError(`Máximo ${MAX_PHOTOS} fotos por análise. Depois de criar o chantier, você pode adicionar outras fotos na timeline.`);
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -126,7 +127,7 @@ export default function HomePage() {
     } else if (failedCount > 0) {
       setError(`${failedCount} foto${failedCount > 1 ? "s" : ""} não pôde ser lida (formato desconhecido).`);
     } else if (dropped > 0) {
-      setError(`Você selecionou ${selected.length} fotos, mas o máximo é ${MAX_PHOTOS} por análise. ${dropped} foram ignoradas.`);
+      setError(`Você selecionou ${selected.length} fotos, mas o máximo é ${MAX_PHOTOS} por análise. ${dropped} foram ignoradas — adicione elas depois na timeline do chantier.`);
     }
 
     // Reset l input pour permettre de re-sélectionner la même photo si retirée puis re-choisie.
