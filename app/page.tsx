@@ -192,10 +192,16 @@ export default function HomePage() {
           </div>
         ) : null}
 
-        <div className="px-6 mt-4 text-center">
+        <div className="px-6 mt-4 text-center space-y-2">
           <p className="text-[11px] text-[color:var(--color-muted)]">
             Baseado em SINAPI RJ 2025 · 246 notas fiscais reais Rio Centro
           </p>
+          <Link
+            href="/aprendizados"
+            className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--color-accent)] hover:opacity-80 transition"
+          >
+            🧠 O que a IA aprendeu com você →
+          </Link>
         </div>
       </div>
 

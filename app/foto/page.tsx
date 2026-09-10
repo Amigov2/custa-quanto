@@ -353,14 +353,18 @@ export default function FotoPage() {
             </p>
 
             {(learningsCount >= 3 || countPreferenceSignals() >= 3) && (
-              <div className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[color:var(--color-accent)]">
+              <Link
+                href="/aprendizados"
+                className="mt-4 flex items-center justify-center gap-2 text-[11px] text-[color:var(--color-accent)] hover:opacity-80 transition"
+              >
                 <span>🧠</span>
                 <span>
                   A IA aprendeu com você
                   {learningsCount > 0 ? ` · ${learningsCount} correções` : ""}
-                  {countPreferenceSignals() > 0 ? ` · ${countPreferenceSignals()} preferências detectadas` : ""}
+                  {countPreferenceSignals() > 0 ? ` · ${countPreferenceSignals()} preferências` : ""}
                 </span>
-              </div>
+                <span className="text-[color:var(--color-muted)]">→</span>
+              </Link>
             )}
 
             {drafts.length > 0 && !targetChantierId && (

@@ -47,6 +47,28 @@ export function saveLearning(rec: Omit<LearningRecord, "id" | "dateISO">): void 
   // FIFO cap : garde les MAX_RECORDS derniers.
   const capped = list.slice(-MAX_RECORDS);
   localStorage.setItem(KEY, JSON.stringify(capped));
+  window.dispatchEvent(new CustomEvent("cq-learnings-change"));
+}
+
+export function deleteLearning(id: string): void {
+  const list = loadLearnings().filter(l => l.id !== id);
+  localStorage.setItem(KEY, JSON.stringify(list));
+  window.dispatchEvent(new CustomEvent("cq-learnings-change"));
+}
+
+export function clearAllLearnings(): void {
+  localStorage.removeItem(KEY);
+  window.dispatchEvent(new CustomEvent("cq-learnings-change"));
+}
+
+export function onLearningsChange(cb: () => void): () => void {
+  const handler = () => cb();
+  window.addEventListener("cq-learnings-change", handler);
+  window.addEventListener("storage", handler);
+  return () => {
+    window.removeEventListener("cq-learnings-change", handler);
+    window.removeEventListener("storage", handler);
+  };
 }
 
 // Résumé natural language des learnings à injecter dans le prompt Vision.
