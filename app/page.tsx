@@ -7,22 +7,33 @@ import { deleteChantier, loadChantiers, seedDemoIfEmpty } from "@/lib/storage";
 import { getService } from "@/lib/sinapi";
 import { fmtBRL, midOf } from "@/lib/estimate";
 import { loadAllPayments, type Payment } from "@/lib/payments";
+import { loadPhotos, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import type { Chantier } from "@/lib/types";
 
 export default function HomePage() {
   const [chantiers, setChantiers] = useState<Chantier[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     seedDemoIfEmpty();
     setChantiers(loadChantiers());
     setPayments(loadAllPayments());
+    setPhotos(loadPhotos());
     setReady(true);
+    return onPhotosChange(() => setPhotos(loadPhotos()));
   }, []);
 
   const paymentsByChantier = payments.reduce<Record<string, number>>((acc, p) => {
     acc[p.chantierId] = (acc[p.chantierId] || 0) + p.valor;
+    return acc;
+  }, {});
+
+  // Groupe les photos par chantier + garde la plus récente comme vignette de card.
+  const photosByChantier = photos.reduce<Record<string, PhotoRecord[]>>((acc, p) => {
+    if (!p.chantierId) return acc;
+    (acc[p.chantierId] ||= []).push(p);
     return acc;
   }, {});
 
@@ -80,9 +91,25 @@ export default function HomePage() {
                   const pago = paymentsByChantier[c.id] || 0;
                   const pct = mid > 0 ? pago / mid : 0;
                   const overshoot = pago > mid;
+                  const cPhotos = photosByChantier[c.id] || [];
+                  const lastPhoto = cPhotos[cPhotos.length - 1];
                   return (
                     <div key={c.id} className="card-outlined p-4">
                       <div className="flex items-start gap-3">
+                        {lastPhoto ? (
+                          <div className="relative shrink-0">
+                            <img
+                              src={lastPhoto.thumbnail}
+                              alt=""
+                              className="w-14 h-14 rounded-xl object-cover"
+                            />
+                            {cPhotos.length > 1 && (
+                              <span className="absolute -top-1 -right-1 bg-[color:var(--color-accent)] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                                {cPhotos.length}
+                              </span>
+                            )}
+                          </div>
+                        ) : null}
                         <div className="flex-1 min-w-0">
                           <p className="text-[16px] font-semibold truncate">{c.name}</p>
                           <div className="flex items-center gap-2 mt-1.5">

@@ -16,6 +16,7 @@ import {
   type Payment,
   type PaymentKind,
 } from "@/lib/payments";
+import { getPhotosByChantier, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import type { Chantier } from "@/lib/types";
 
 export default function ContasPage() {
@@ -24,6 +25,7 @@ export default function ContasPage() {
 
   const [chantier, setChantier] = useState<Chantier | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [ready, setReady] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -32,7 +34,9 @@ export default function ContasPage() {
     const c = loadChantiers().find(c => c.id === id) ?? null;
     setChantier(c);
     if (c) setPayments(loadPayments(id));
+    setPhotos(getPhotosByChantier(id));
     setReady(true);
+    return onPhotosChange(() => setPhotos(getPhotosByChantier(id)));
   }, [id]);
 
   const chantierEst = useMemo(
@@ -180,6 +184,53 @@ export default function ContasPage() {
             </div>
           </div>
         )}
+
+        {/* Timeline photos du chantier */}
+        <div className="px-6 mb-6 fade-in fade-in-3">
+          <div className="flex items-center justify-between mb-3 px-2">
+            <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
+              Fotos
+            </p>
+            {photos.length > 0 && (
+              <span className="text-[11px] text-[color:var(--color-muted)] num">{photos.length}</span>
+            )}
+          </div>
+          {photos.length === 0 ? (
+            <Link
+              href={`/foto?chantierId=${id}`}
+              className="card-outlined p-6 text-center block hover:border-[color:var(--color-accent)] transition"
+            >
+              <div className="w-12 h-12 rounded-full bg-[color:var(--color-accent-soft)] mx-auto mb-2 flex items-center justify-center text-xl">
+                📸
+              </div>
+              <p className="text-[13px] font-medium mb-0.5">Adicionar primeira foto</p>
+              <p className="text-[11px] text-[color:var(--color-muted)]">
+                Documenta o avanço do chantier · La progression du chantier
+              </p>
+            </Link>
+          ) : (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-6 px-6 pb-1">
+              {photos.map(p => {
+                const date = new Date(p.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+                return (
+                  <div key={p.id} className="shrink-0 w-28">
+                    <div className="rounded-2xl overflow-hidden border border-[color:var(--color-line)] aspect-square bg-[color:var(--color-bg-2)]">
+                      <img src={p.thumbnail} alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <p className="text-[11px] font-medium mt-1.5 truncate">{p.label || "Foto"}</p>
+                    <p className="text-[10px] text-[color:var(--color-muted)] num">{date}</p>
+                  </div>
+                );
+              })}
+              <Link
+                href={`/foto?chantierId=${id}`}
+                className="shrink-0 w-28 aspect-square rounded-2xl border-2 border-dashed border-[color:var(--color-line)] flex items-center justify-center text-[color:var(--color-accent)] hover:border-[color:var(--color-accent)] transition"
+              >
+                <span className="text-2xl">+</span>
+              </Link>
+            </div>
+          )}
+        </div>
 
         {/* Liste chronologique */}
         <div className="px-6 mb-8 fade-in fade-in-3">

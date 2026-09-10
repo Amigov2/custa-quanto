@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getMacro, getMacroFr } from "@/lib/macros";
 import type { PhotoAnalysis } from "@/lib/vision";
 import { analysisContext, type ChatMessage } from "@/lib/chat";
@@ -75,6 +75,8 @@ async function makeThumbnail(file: File, maxDim = 512, quality = 0.7): Promise<s
 
 export default function FotoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const targetChantierId = searchParams.get("chantierId");
   const inputRef = useRef<HTMLInputElement>(null);
   const INPUT_ID = "cq-photo-input";
   const CAMERA_ID = "cq-photo-camera";
@@ -161,21 +163,27 @@ export default function FotoPage() {
       const conf = data.analysis.tamanho_confianca;
       setEditedM2(conf === "alta" ? data.analysis.tamanho_estimado_m2 : 0);
       setConfirmedM2(false);
-      // Sauve l'analyse dans l'historique (brouillon, non rattaché à un chantier).
+      // Sauve l'analyse dans l'historique.
+      // Si un chantierId est passé en URL, la photo est directement rattachée à ce chantier
+      // (mode "documenter l'avancement d'un chantier existant") et on redirige vers /contas.
+      // Sinon la photo est un brouillon jusqu'à ce qu'un chantier soit créé depuis elle.
       try {
         const thumbnail = await makeThumbnail(file);
         const saved = savePhoto({
-          chantierId: null,
+          chantierId: targetChantierId,
           thumbnail,
           analysis: data.analysis,
           userScope: userScope.trim(),
         });
         setPhotoId(saved.id);
       } catch (thumbErr) {
-        // Vignette optionnelle : on ne bloque pas le flux si elle échoue.
         console.warn("Thumbnail generation failed:", thumbErr);
       }
       setStep("result");
+      if (targetChantierId) {
+        // Léger délai pour que l'user voie brièvement le résultat avant redirect.
+        setTimeout(() => router.push(`/contas/${targetChantierId}`), 800);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg);
@@ -219,7 +227,9 @@ export default function FotoPage() {
   }
 
   function goToEstimate(macroId: string) {
-    router.push(`/estimate?macroId=${macroId}&qty=${editedM2}`);
+    const params = new URLSearchParams({ macroId, qty: String(editedM2) });
+    if (photoId) params.set("fromPhoto", photoId);
+    router.push(`/estimate?${params.toString()}`);
   }
 
   return (
@@ -239,6 +249,17 @@ export default function FotoPage() {
       </div>
 
       <div className="max-w-md mx-auto pb-32">
+        {targetChantierId && (
+          <div className="px-6 pt-4">
+            <div className="rounded-2xl bg-[color:var(--color-accent-soft)] border border-[color:var(--color-accent)]/20 px-4 py-2.5 flex items-center gap-2">
+              <span className="text-lg">📎</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-[color:var(--color-accent)]">Foto para o chantier existente</p>
+                <p className="text-[11px] text-[color:var(--color-ink-2)]">Sera ajoutée à la timeline du chantier</p>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="px-6 pt-6 pb-2 fade-in">
           <h1 className="large-title">Analisar foto</h1>
           <p className="text-[13px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">Analyser une photo</p>
@@ -295,7 +316,7 @@ export default function FotoPage() {
               💡 Tire com boa iluminação, mostrando o máximo do cômodo. Inclua uma porta ou móvel se possível — ajuda para estimar tamanho.
             </p>
 
-            {drafts.length > 0 && (
+            {drafts.length > 0 && !targetChantierId && (
               <div className="mt-8">
                 <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
                   Rascunhos <span className="text-[10px] normal-case tracking-normal opacity-70">· non vinculadas a um chantier ({drafts.length})</span>

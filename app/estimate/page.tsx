@@ -8,6 +8,7 @@ import { estimateChantier, estimatePost, explainDays, fmt, fmtBRL, fmtPct, midOf
 import { getService, SERVICES } from "@/lib/sinapi";
 import { getMaterials, type Finish } from "@/lib/materials";
 import { loadChantiers, saveChantier } from "@/lib/storage";
+import { attachToChantier } from "@/lib/photo_history";
 import type { ServicePost } from "@/lib/types";
 import { PHASES, getPhaseForService, type PhaseId } from "@/lib/phases";
 import { detectAlerts, compareWithOrcamento, verdictLabel, type ComparisonResult } from "@/lib/alerts";
@@ -26,6 +27,7 @@ export default function EstimatePage() {
   const editId = searchParams.get("edit");
   const prefillMacroId = searchParams.get("macroId");
   const prefillQty = searchParams.get("qty");
+  const fromPhotoId = searchParams.get("fromPhoto");
   const [step, setStep] = useState<Step>("pick");
   const [macroId, setMacroId] = useState<string | null>(null);
   const [qty, setQty] = useState<number>(0);
@@ -120,12 +122,15 @@ export default function EstimatePage() {
 
   function confirmSave() {
     if (!chantierName.trim()) return;
-    saveChantier({
+    const created = saveChantier({
       name: chantierName.trim(),
       posts: posts.filter(p => p.enabled !== false).map(p => ({ serviceId: p.serviceId, surface: p.surface, modifiers: p.modifiers })),
       finish,
       total: chantierEst.total,
     });
+    // Si le chantier a été initié depuis une analyse photo, rattache la photo
+    // (elle passe de brouillon à photo du chantier + apparaîtra dans /contas timeline).
+    if (fromPhotoId) attachToChantier(fromPhotoId, created.id);
     setShowSaveModal(false);
     router.push("/");
   }
