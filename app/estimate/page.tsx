@@ -935,37 +935,47 @@ function Detail({
         <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
           Lista de material {config.materialMode === "client" ? "(cliente compra)" : "(empreiteiro fornece)"}
         </p>
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {chantierEst.estimates.map(e => {
             const mats = getMaterials(e.post.serviceId, e.post.surface, finish);
             const svc = e.svc;
+            const total = mats ? mats.reduce((s, m) => s + m.total, 0) : 0;
+            const nItems = mats?.length || 0;
             return (
-              <div key={e.post.serviceId} className="card-outlined p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{svc.emoji}</span>
-                    <p className="text-[13px] font-semibold">{svc.name.replace(/^[^\s]+\s/, "")}</p>
-                  </div>
-                  {mats && <span className="text-[12px] font-semibold num">{fmtBRL(mats.reduce((s, m) => s + m.total, 0))}</span>}
-                </div>
-                {mats ? (
-                  <div>
-                    {mats.map((m, i) => (
-                      <div key={i} className={`flex items-baseline justify-between py-1.5 ${i > 0 ? "border-t border-[color:var(--color-line)]" : ""}`}>
-                        <div className="flex-1 min-w-0 pr-2">
-                          <p className="text-[12px] truncate">{m.name}</p>
-                          <p className="text-[10px] text-[color:var(--color-muted)] num">
-                            {m.qty} {m.unit} × {fmtBRL(m.unitPrice)}
-                          </p>
+              <details key={e.post.serviceId} className="accordion">
+                <summary>
+                  <span className="accordion-icon bg-[color:var(--color-bg-2)]">{svc.emoji}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-semibold leading-tight truncate">
+                      {svc.name.replace(/^[^\s]+\s/, "")}
+                    </span>
+                    {mats && (
+                      <span className="block text-[11px] text-[color:var(--color-muted)]">
+                        {nItems} item{nItems > 1 ? "s" : ""} · <span className="num">{fmtBRL(total)}</span>
+                      </span>
+                    )}
+                  </span>
+                </summary>
+                <div className="accordion-body pt-3">
+                  {mats ? (
+                    <div>
+                      {mats.map((m, i) => (
+                        <div key={i} className={`flex items-baseline justify-between py-1.5 ${i > 0 ? "border-t border-[color:var(--color-line)]" : ""}`}>
+                          <div className="flex-1 min-w-0 pr-2">
+                            <p className="text-[12px] truncate">{m.name}</p>
+                            <p className="text-[10px] text-[color:var(--color-muted)] num">
+                              {m.qty} {m.unit} × {fmtBRL(m.unitPrice)}
+                            </p>
+                          </div>
+                          <p className="text-[12px] font-medium num shrink-0">{fmtBRL(m.total)}</p>
                         </div>
-                        <p className="text-[12px] font-medium num shrink-0">{fmtBRL(m.total)}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-[color:var(--color-muted)]">Lista detalhada em breve para este serviço.</p>
-                )}
-              </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[color:var(--color-muted)]">Lista detalhada em breve para este serviço.</p>
+                  )}
+                </div>
+              </details>
             );
           })}
         </div>
