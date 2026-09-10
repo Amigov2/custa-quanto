@@ -91,6 +91,13 @@ export default function HomePage() {
     const dropped = Math.max(0, selected.length - remaining);
     const toAdd = selected.slice(0, remaining);
 
+    // Budget Vercel body 4.5MB — on adapte la compression au nombre total de photos
+    // qu on aura après cet ajout pour éviter un status 413 côté serveur.
+    // 1-2 photos : qualité max. 3-5 : intermédiaire. 6+ : compact garanti sous 200 KB.
+    const newTotal = files.length + toAdd.length;
+    const maxDim = newTotal <= 2 ? 2000 : newTotal <= 5 ? 1500 : 1024;
+    const quality = newTotal <= 2 ? 0.85 : newTotal <= 5 ? 0.8 : 0.7;
+
     // Compression + création de preview URL par photo. On tolère qu une photo échoue
     // (ex : HEIC ancien iOS non décodable) sans planter tout le lot.
     const compressed: File[] = [];
@@ -98,7 +105,7 @@ export default function HomePage() {
     let failedCount = 0;
     for (const f of toAdd) {
       try {
-        const c = await compressImage(f, files.length + compressed.length > 0 ? 1500 : 2000, 0.8);
+        const c = await compressImage(f, maxDim, quality);
         const url = URL.createObjectURL(c);
         compressed.push(c);
         urls.push(url);
@@ -151,8 +158,22 @@ export default function HomePage() {
           setSubmitting(false);
           return;
         }
+        // Safety : si le total des photos actuelles dépasse ~3.5MB, on recompresse
+        // pour tenir dans le budget Vercel 4.5MB (base64 grossit de 33%).
+        // Cas d usage : l user a ajouté photos une par une, les premières sont en 2000px.
+        const totalSize = files.reduce((s, f) => s + f.size, 0);
+        const BUDGET = 3.2 * 1024 * 1024; // 3.2 MB laisse marge pour scope + learnings
+        let filesToSend = files;
+        if (totalSize > BUDGET && files.length >= 2) {
+          try {
+            const targetDim = files.length <= 5 ? 1200 : 900;
+            filesToSend = await Promise.all(files.map(f => compressImage(f, targetDim, 0.7)));
+          } catch {
+            // Fallback : on tente d envoyer tel quel, le serveur renverra 413 si trop gros.
+          }
+        }
         const form = new FormData();
-        files.forEach(f => form.append("photos", f));
+        filesToSend.forEach(f => form.append("photos", f));
         if (t) form.append("scope", t);
         const learnings = summarizeLearnings();
         const prefs = summarizePreferences();
