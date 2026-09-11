@@ -2,6 +2,7 @@ import type { Chantier } from "./types";
 import { seedPaymentsIfEmpty } from "./payments";
 
 const KEY = "cq_chantiers";
+const SEED_KEY = "cq_seed_done";
 
 export function loadChantiers(): Chantier[] {
   if (typeof window === "undefined") return [];
@@ -30,7 +31,13 @@ export function deleteChantier(id: string): void {
 
 export function seedDemoIfEmpty(): void {
   if (typeof window === "undefined") return;
-  if (loadChantiers().length > 0) return;
+  // Ne seed qu une seule fois par device : si l user a supprimé les chantiers demo,
+  // on ne les remet pas. Le flag cq_seed_done est persistant.
+  if (localStorage.getItem(SEED_KEY) === "1") return;
+  if (loadChantiers().length > 0) {
+    localStorage.setItem(SEED_KEY, "1");
+    return;
+  }
   const demo: Chantier[] = [
     {
       id: "ch_demo1",
@@ -64,4 +71,6 @@ export function seedDemoIfEmpty(): void {
     { valor: 1200, kind: "material", phaseId: "acabamento", serviceId: "piso_ceramico", note: "Cerâmica 60x60 Portobello",         date: "2026-08-24T14:30:00Z" },
     { valor: 1800, kind: "mo",       phaseId: "acabamento", serviceId: "piso_ceramico", note: "Valternir + equipe — assentamento", date: "2026-08-28T18:00:00Z" },
   ]);
+
+  localStorage.setItem(SEED_KEY, "1");
 }

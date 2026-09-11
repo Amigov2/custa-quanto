@@ -372,6 +372,8 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
             placeholder="Buscar (cozinha, pintura, piso…)"
             value={search}
             onChange={e => setSearch(e.target.value)}
+            lang={typeof document !== "undefined" ? document.documentElement.lang || "pt-BR" : "pt-BR"}
+            inputMode="text"
             className="w-full bg-[color:var(--color-bg-2)] rounded-xl pl-10 pr-4 py-3 text-[15px] outline-none placeholder:text-[color:var(--color-muted)]"
           />
         </div>
@@ -1756,6 +1758,8 @@ function SaveChantierModal({
             onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") onConfirm(); }}
             placeholder="Ex: Cozinha Riachuelo"
+            lang={typeof document !== "undefined" ? document.documentElement.lang || "pt-BR" : "pt-BR"}
+            inputMode="text"
             className="w-full bg-[color:var(--color-bg-2)] rounded-xl px-4 py-3 text-[15px] outline-none placeholder:text-[color:var(--color-muted)] focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
             autoFocus
           />
