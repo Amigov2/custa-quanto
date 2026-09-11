@@ -12,6 +12,7 @@ import { generateWhatsAppSummary, shareWithSystem, whatsAppShareUrl } from "@/li
 import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appendChatMessages, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import { compressImage, makeThumbnail, PLACEHOLDER_THUMB } from "@/lib/image_processing";
 import BeforeAfterSlider from "@/app/components/BeforeAfterSlider";
+import MicButton from "@/app/components/MicButton";
 import type { AfterStyle } from "@/lib/gemini_image";
 import { getCurrentLang, bcp47Of, onLangChange, type LangCode } from "@/lib/ui_lang";
 import { useT } from "@/lib/i18n";
@@ -457,15 +458,23 @@ function FotoPageInner() {
                 Escopo ou pergunta
                 <span className="text-[color:var(--color-muted)] font-normal"> · Scope ou question</span>
               </span>
-              <textarea
-                value={userScope}
-                onChange={e => setUserScope(e.target.value.slice(0, 500))}
-                rows={3}
-                placeholder="Ex: só pintar as paredes. Ou: quanto tempo leva para 1 pessoa? Ou os dois."
-                lang={bcp47Of(fotoUiLang)}
-                inputMode="text"
-                className="w-full rounded-2xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-2)] px-4 py-3 text-[14px] resize-none focus:outline-none focus:border-[color:var(--color-accent)]"
-              />
+              <div className="relative">
+                <textarea
+                  value={userScope}
+                  onChange={e => setUserScope(e.target.value.slice(0, 500))}
+                  rows={3}
+                  placeholder="Ex: só pintar as paredes. Ou: quanto tempo leva para 1 pessoa? Ou os dois."
+                  lang={bcp47Of(fotoUiLang)}
+                  inputMode="text"
+                  className="w-full rounded-2xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-2)] px-4 py-3 pr-14 text-[14px] resize-none focus:outline-none focus:border-[color:var(--color-accent)]"
+                />
+                <div className="absolute right-2 bottom-2">
+                  <MicButton
+                    onTranscript={t => setUserScope(prev => (prev ? prev + " " + t : t).slice(0, 500))}
+                    className="w-9 h-9"
+                  />
+                </div>
+              </div>
               <span className="block text-[11px] text-[color:var(--color-muted)] mt-1">
                 {userScope.length}/500 · a IA respeita seu escopo E responde suas perguntas
               </span>
@@ -1302,6 +1311,10 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
             inputMode="text"
             className="flex-1 resize-none rounded-2xl border border-[color:var(--color-line)] bg-transparent px-3 py-2 text-[14px] outline-none focus:border-[color:var(--color-accent)] transition max-h-32"
             style={{ minHeight: "40px" }}
+          />
+          <MicButton
+            onTranscript={t => setInput(prev => (prev ? prev + " " + t : t))}
+            className="w-10 h-10"
           />
           <button
             onClick={send}

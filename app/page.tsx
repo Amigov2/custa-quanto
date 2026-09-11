@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CreditsBadge from "@/app/components/CreditsBadge";
 import LangSelector from "@/app/components/LangSelector";
+import MicButton from "@/app/components/MicButton";
 import { getCurrentLang, bcp47Of, onLangChange, type LangCode } from "@/lib/ui_lang";
 import { useT } from "@/lib/i18n";
 import { deleteChantier, loadChantiers, seedDemoIfEmpty } from "@/lib/storage";
@@ -319,6 +320,11 @@ export default function HomePage() {
                   <span className="text-[12px] font-medium num">{files.length}/{MAX_PHOTOS}</span>
                 )}
               </label>
+
+              <MicButton
+                onTranscript={t => setText(prev => (prev ? prev + " " + t : t).slice(0, 500))}
+                className="h-12 w-12"
+              />
 
               <button
                 onClick={submit}
