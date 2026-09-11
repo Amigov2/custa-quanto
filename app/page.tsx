@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import CreditsBadge from "@/app/components/CreditsBadge";
 import LangSelector from "@/app/components/LangSelector";
 import { getCurrentLang, bcp47Of, onLangChange, type LangCode } from "@/lib/ui_lang";
+import { useT } from "@/lib/i18n";
 import { deleteChantier, loadChantiers, seedDemoIfEmpty } from "@/lib/storage";
 import { getService } from "@/lib/sinapi";
 import { fmtBRL, midOf } from "@/lib/estimate";
@@ -41,6 +42,7 @@ export default function HomePage() {
 
   // Langue UI (contrôle le clavier iOS via lang="fr-FR" sur textarea + <html>)
   const [uiLang, setUiLang] = useState<LangCode>("pt");
+  const tr = useT();
 
   useEffect(() => {
     seedDemoIfEmpty();
@@ -235,17 +237,17 @@ export default function HomePage() {
 
       <div className="max-w-md mx-auto pb-16">
         <div className="px-6 pt-6 pb-2 fade-in">
-          <h1 className="large-title">Início</h1>
+          <h1 className="large-title">{tr("home.title")}</h1>
         </div>
 
         {ready && chantiers.length > 0 && (
           <div className="px-6 pt-4 pb-6 fade-in fade-in-1">
-            <p className="text-[12px] text-[color:var(--color-muted)]">Total dos seus chantiers</p>
+            <p className="text-[12px] text-[color:var(--color-muted)]">{tr("home.total")}</p>
             <div className="flex items-baseline gap-2">
               <span className="text-[color:var(--color-muted)] text-xl font-medium">R$</span>
               <span className="display text-[40px]">{Math.round(totalMid).toLocaleString("pt-BR")}</span>
               <span className="text-[12px] text-[color:var(--color-muted)] ml-2">
-                {chantiers.length} chantier{chantiers.length > 1 ? "s" : ""}
+                {chantiers.length} {chantiers.length > 1 ? tr("home.chantiers") : tr("home.chantier")}
               </span>
             </div>
           </div>
@@ -255,15 +257,15 @@ export default function HomePage() {
         <div className="px-6 pt-2 pb-6 fade-in fade-in-2">
           <div className="card-outlined p-4">
             <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-2">
-              Nova reforma
-              <span className="ml-2 normal-case tracking-normal font-normal text-[color:var(--color-muted)]">· Nouveau chantier</span>
+              {tr("home.newRenovation")}
+              <span className="ml-2 normal-case tracking-normal font-normal text-[color:var(--color-muted)]">· {tr("home.newRenovationSub")}</span>
             </p>
 
             <textarea
               value={text}
               onChange={e => setText(e.target.value.slice(0, 500))}
               rows={3}
-              placeholder="Ex: quero pintar minha cozinha de 15 m². Ou tire uma foto e deixe a IA analisar."
+              placeholder={tr("home.scopePlaceholder")}
               lang={bcp47Of(uiLang)}
               inputMode="text"
               className="w-full bg-[color:var(--color-bg-2)] rounded-2xl px-4 py-3 text-[14px] outline-none resize-none placeholder:text-[color:var(--color-muted)] focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
@@ -326,14 +328,14 @@ export default function HomePage() {
                 {submitting ? (
                   <>
                     <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Analisando…
+                    {tr("home.analyzing")}
                   </>
                 ) : (
                   <>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
                       <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
-                    Analisar
+                    {tr("home.analyze")}
                   </>
                 )}
               </button>
@@ -356,7 +358,7 @@ export default function HomePage() {
               <p className="text-[11px] text-[#ff3b30] mt-2">{error}</p>
             )}
             <p className="text-[10px] text-[color:var(--color-muted)] mt-2 leading-snug">
-              Digite, tire uma foto (ou várias), ou os dois. A IA decide o resto.
+              {tr("home.helper")}
             </p>
           </div>
         </div>
@@ -364,7 +366,7 @@ export default function HomePage() {
         {chantiers.length > 0 && (
           <div className="px-6 mb-8 fade-in fade-in-3">
             <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-              Salvos
+              {tr("home.saved")}
             </p>
             <div className="space-y-3">
               {chantiers
@@ -406,7 +408,7 @@ export default function HomePage() {
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-base">{emojis}</span>
                             <span className="text-[12px] text-[color:var(--color-muted)]">
-                              {nPosts} serviço{nPosts > 1 ? "s" : ""} · {date}
+                              {nPosts} {nPosts > 1 ? tr("card.servicesPlural") : tr("card.services")} · {date}
                             </span>
                           </div>
                         </div>
@@ -433,12 +435,12 @@ export default function HomePage() {
                           </div>
                           <div className="flex items-center justify-between mt-1.5">
                             <span className="text-[11px] text-[color:var(--color-muted)] num">
-                              {fmtBRL(pago)} pago · {Math.round(pct * 100)}%
+                              {fmtBRL(pago)} {tr("card.paid")} · {Math.round(pct * 100)}%
                             </span>
                             <span className={`text-[11px] num ${overshoot ? "text-[#ff3b30] font-medium" : "text-[color:var(--color-muted)]"}`}>
                               {overshoot
                                 ? `+${fmtBRL(pago - mid)}`
-                                : `${fmtBRL(mid - pago)} restante`}
+                                : `${fmtBRL(mid - pago)} ${tr("card.remaining")}`}
                             </span>
                           </div>
                         </div>
@@ -449,19 +451,19 @@ export default function HomePage() {
                           href={`/estimate?edit=${c.id}`}
                           className="flex-1 text-[13px] font-medium text-[color:var(--color-accent)] py-1.5 text-center"
                         >
-                          Detalhes
+                          {tr("card.details")}
                         </Link>
                         <Link
                           href={`/contas/${c.id}`}
                           className="flex-1 text-[13px] font-medium text-[color:var(--color-accent)] py-1.5 text-center border-l border-[color:var(--color-line)]"
                         >
-                          Contas
+                          {tr("card.accounts")}
                         </Link>
                         <button
                           onClick={() => handleDelete(c.id)}
                           className="text-[13px] text-[color:var(--color-muted)] py-1.5 px-3 border-l border-[color:var(--color-line)]"
                         >
-                          Excluir
+                          {tr("card.delete")}
                         </button>
                       </div>
                     </div>
@@ -476,16 +478,16 @@ export default function HomePage() {
             href="/estimate"
             className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--color-muted)] hover:text-[color:var(--color-accent)] transition"
           >
-            Ou escolher manualmente cômodo/serviço →
+            {tr("home.chooseManually")}
           </Link>
           <p className="text-[11px] text-[color:var(--color-muted)]">
-            Baseado em SINAPI RJ 2025 · 246 notas fiscais reais Rio Centro
+            {tr("home.footer")}
           </p>
           <Link
             href="/aprendizados"
             className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--color-accent)] hover:opacity-80 transition"
           >
-            🧠 O que a IA aprendeu com você →
+            {tr("home.aprendizados")}
           </Link>
         </div>
       </div>
