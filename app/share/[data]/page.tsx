@@ -7,6 +7,7 @@ import { decodeChantier, type SharePayload } from "@/lib/share_encoding";
 import { estimateChantier, fmtBRL, midOf } from "@/lib/estimate";
 import { getService } from "@/lib/sinapi";
 import { PHASES, getPhaseForService, type PhaseId } from "@/lib/phases";
+import { useT } from "@/lib/i18n";
 
 // Le type Finish est stocké sans accent ("padrao", "economico"). Pour l'affichage
 // on mappe vers le PT-BR correct ("Padrão", "Econômico").
@@ -19,6 +20,7 @@ const FINISH_LABEL: Record<string, string> = {
 // Route publique — pas de nav ni de sticky bottom. Un vrai devis "à envoyer".
 // Toutes les données arrivent via URL (base64url) : ni compte utilisateur, ni backend requis.
 export default function SharePage() {
+  const tr = useT();
   const params = useParams<{ data: string }>();
   const [payload, setPayload] = useState<SharePayload | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -60,7 +62,7 @@ export default function SharePage() {
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="text-center max-w-md">
           <div className="text-5xl mb-4">🔗</div>
-          <h1 className="text-[22px] font-bold mb-2">Link inválido</h1>
+          <h1 className="text-[22px] font-bold mb-2">{tr("share.invalid")}</h1>
           <p className="text-[14px] text-[color:var(--color-muted)] mb-6">
             Este link parece corrompido ou incompleto.
           </p>
@@ -143,7 +145,7 @@ export default function SharePage() {
             <p className="text-[10px] text-[color:var(--color-muted)]">Estimador reforma · SINAPI RJ 2025</p>
           </div>
           <div className="text-right">
-            <p className="text-[11px] text-[color:var(--color-muted)] uppercase tracking-wide">Orçamento</p>
+            <p className="text-[11px] text-[color:var(--color-muted)] uppercase tracking-wide">{tr("share.orcamento")}</p>
             <p className="text-[15px] font-bold num">#{docNumber}</p>
             <p className="text-[10px] text-[color:var(--color-muted)] num mt-0.5">
               {generatedAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}
@@ -175,15 +177,15 @@ export default function SharePage() {
           </p>
           <div className="flex gap-6 mt-4 pt-4 border-t border-[color:var(--color-line)]">
             <div className="flex-1">
-              <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)]">Duração</p>
+              <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)]">{tr("share.duration")}</p>
               <p className="text-[18px] font-bold num">{Math.round(est.days)} {Math.round(est.days) === 1 ? "dia" : "dias"}</p>
             </div>
             <div className="flex-1">
-              <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)]">Serviços</p>
+              <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)]">{tr("share.services")}</p>
               <p className="text-[18px] font-bold num">{est.estimates.length}</p>
             </div>
             <div className="flex-1">
-              <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)]">Acabamento</p>
+              <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)]">{tr("est.acabamento")}</p>
               <p className="text-[18px] font-bold">{FINISH_LABEL[c.finish] || c.finish}</p>
             </div>
           </div>

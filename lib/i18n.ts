@@ -262,6 +262,25 @@ const PT: Dict = {
   "est.encargosMO": "Encargos sociais sobre MO",
   "est.prazo": "Prazo",
   "est.chantierNamePlaceholder": "Ex: Cozinha Riachuelo",
+
+  // Foto/contas/share complements (WIP i18n finalisation)
+  "foto.analyzingPhoto": "Analisando a foto...",
+  "foto.analyzingPhotoSub": "Analyse en cours...",
+  "foto.error": "Erro na análise",
+  "foto.measureBefore": "Meça com a trena antes de continuar.",
+  "foto.createEstimate": "Criar um orçamento",
+  "foto.askAI": "Fazer uma pergunta à IA",
+  "foto.askAnything": "Pergunte o que quiser sobre esta foto",
+  "foto.askAnythingSub": "Demande ce que tu veux sur cette photo",
+  "contas.notFound": "Chantier não encontrado.",
+  "contas.noPhase": "Sem fase",
+  "contas.newPayment": "Novo pagamento",
+  "contas.finalizeMsg": "Sua correção calibra os preços Rio para os próximos chantiers.",
+  "contas.finalizeMsgSub": "La correction calibre les prix futurs",
+  "share.invalid": "Link inválido",
+  "share.orcamento": "Orçamento",
+  "share.duration": "Duração",
+  "share.services": "Serviços",
 };
 
 const FR: Dict = {
@@ -516,6 +535,25 @@ const FR: Dict = {
   "est.encargosMO": "Charges sociales sur MO",
   "est.prazo": "Délai",
   "est.chantierNamePlaceholder": "Ex : Cuisine Riachuelo",
+
+  // Foto/contas/share complements (WIP i18n finalisation)
+  "foto.analyzingPhoto": "Analyse en cours...",
+  "foto.analyzingPhotoSub": "Analisando a foto...",
+  "foto.error": "Erreur d'analyse",
+  "foto.measureBefore": "Mesure au mètre avant de continuer.",
+  "foto.createEstimate": "Créer un devis",
+  "foto.askAI": "Poser une question à l'IA",
+  "foto.askAnything": "Demande ce que tu veux sur cette photo",
+  "foto.askAnythingSub": "Pergunte o que quiser sobre esta foto",
+  "contas.notFound": "Chantier introuvable.",
+  "contas.noPhase": "Sans phase",
+  "contas.newPayment": "Nouveau paiement",
+  "contas.finalizeMsg": "Ta correction calibre les prix Rio pour les prochains chantiers.",
+  "contas.finalizeMsgSub": "A correção calibra os preços futuros",
+  "share.invalid": "Lien invalide",
+  "share.orcamento": "Devis",
+  "share.duration": "Durée",
+  "share.services": "Services",
 };
 
 // Traductions basiques pour ES et EN — pas exhaustives, fallback sur PT si manque.

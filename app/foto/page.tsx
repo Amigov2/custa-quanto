@@ -316,8 +316,8 @@ function FotoPageInner() {
             <div className="rounded-2xl bg-[color:var(--color-accent-soft)] border border-[color:var(--color-accent)]/20 px-4 py-2.5 flex items-center gap-2">
               <span className="text-lg">📎</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-[color:var(--color-accent)]">Foto para o chantier existente</p>
-                <p className="text-[11px] text-[color:var(--color-ink-2)]">Sera ajoutée à la timeline du chantier</p>
+                <p className="text-[12px] font-semibold text-[color:var(--color-accent)]">{tr("foto.forChantier")}</p>
+                <p className="text-[11px] text-[color:var(--color-ink-2)]">{tr("foto.forChantierSub")}</p>
               </div>
             </div>
           </div>
@@ -487,8 +487,8 @@ function FotoPageInner() {
         {step === "analyzing" && (
           <div className="px-6 pt-16 text-center fade-in">
             <div className="inline-block w-12 h-12 border-4 border-[color:var(--color-line)] border-t-[color:var(--color-accent)] rounded-full animate-spin mb-4" />
-            <p className="text-[15px] font-medium">Analisando a foto...</p>
-            <p className="text-[12px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">Analyse en cours...</p>
+            <p className="text-[15px] font-medium">{tr("foto.analyzingPhoto")}</p>
+            <p className="text-[12px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">{tr("foto.analyzingPhotoSub")}</p>
             <p className="text-[12px] text-[color:var(--color-muted)] mt-3">~5 segundos</p>
           </div>
         )}
@@ -499,7 +499,7 @@ function FotoPageInner() {
               <div className="w-14 h-14 rounded-full bg-[#ff3b30]/10 mx-auto mb-3 flex items-center justify-center text-2xl">
                 ⚠️
               </div>
-              <p className="text-[14px] font-medium mb-2">Erro na análise</p>
+              <p className="text-[14px] font-medium mb-2">{tr("foto.error")}</p>
               <p className="text-[12px] text-[color:var(--color-muted)] mb-4 break-words">{error}</p>
               <button onClick={reset} className="text-[color:var(--color-accent)] text-[13px] font-medium">
                 Tentar de novo
@@ -791,12 +791,12 @@ function FotoPageInner() {
                 <div className="w-full rounded-xl bg-[#34c759]/10 py-2.5 px-3 flex items-center gap-2">
                   <span className="text-[#34c759]">✓</span>
                   <span className="text-[13px] font-semibold text-[#34c759]">{editedM2} m² confirmado</span>
-                  <button onClick={() => setConfirmedM2(false)} className="ml-auto text-[11px] text-[color:var(--color-muted)]">Editar</button>
+                  <button onClick={() => setConfirmedM2(false)} className="ml-auto text-[11px] text-[color:var(--color-muted)]">{tr("common.edit")}</button>
                 </div>
               ) : (
                 <p className="text-[11px] text-[color:var(--color-muted)] italic leading-snug bg-[color:var(--color-accent)]/5 rounded-lg px-3 py-2">
                   📏 Meça com trena antes de continuar — a precisão do orçamento depende disso.
-                  <span className="block opacity-95 text-[color:var(--color-ink-2)] mt-0.5">Mesure au mètre avant de continuer.</span>
+                  <span className="block opacity-95 text-[color:var(--color-ink-2)] mt-0.5">{tr("foto.measureBefore")}</span>
                 </p>
               )}
             </div>
@@ -990,7 +990,7 @@ function FotoPageInner() {
               <div>
                 <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-2">
                   Criar orçamento
-                  <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Créer un devis</span>
+                  <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">{tr("foto.createEstimate")}</span>
                 </p>
                 {!confirmedM2 && (
                   <p className="text-[11px] text-[color:var(--color-muted)] italic mb-2 px-2">
@@ -1100,7 +1100,7 @@ function FotoPageInner() {
               <span className="flex items-center gap-2">
                 💬 Perguntar à IA sobre esta foto
               </span>
-              <span className="text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Poser une question à l'IA</span>
+              <span className="text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">{tr("foto.askAI")}</span>
             </button>
 
             <button onClick={reset} className="w-full text-[12px] text-[color:var(--color-muted)] py-2">
@@ -1122,6 +1122,7 @@ function FotoPageInner() {
 }
 
 function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; photoId: string | null; onClose: () => void }) {
+  const tr = useT();
   // Reprise auto : si photoId fourni, on charge l'historique persisté au mount.
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (!photoId) return [];
@@ -1237,8 +1238,8 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
             <div className="w-14 h-14 rounded-full bg-[color:var(--color-accent)]/10 mx-auto mb-3 flex items-center justify-center text-2xl">
               💬
             </div>
-            <p className="text-[14px] font-medium">Pergunte o que quiser sobre esta foto</p>
-            <p className="text-[12px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">Demande ce que tu veux sur cette photo</p>
+            <p className="text-[14px] font-medium">{tr("foto.askAnything")}</p>
+            <p className="text-[12px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">{tr("foto.askAnythingSub")}</p>
             <div className="mt-4 space-y-1.5 text-left">
               {[
                 "Atrás do muro tem terra, isso muda algo ?",

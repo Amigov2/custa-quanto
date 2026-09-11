@@ -75,7 +75,7 @@ export default function ContasPage() {
   if (!chantier) {
     return (
       <div className="max-w-md mx-auto px-6 py-24 text-center">
-        <p className="text-[15px] text-[color:var(--color-muted)]">Chantier não encontrado.</p>
+        <p className="text-[15px] text-[color:var(--color-muted)]">{tr("contas.notFound")}</p>
         <Link href="/" className="inline-block mt-4 text-[color:var(--color-accent)] text-[15px]">
           Voltar ao início
         </Link>
@@ -206,7 +206,7 @@ export default function ContasPage() {
               {progress!.unassigned > 0 && (
                 <div className="pt-3 border-t border-[color:var(--color-line)]">
                   <div className="flex items-center justify-between">
-                    <span className="text-[12px] text-[color:var(--color-muted)]">Sem fase</span>
+                    <span className="text-[12px] text-[color:var(--color-muted)]">{tr("contas.noPhase")}</span>
                     <span className="text-[12px] num">{fmtBRL(progress!.unassigned)}</span>
                   </div>
                 </div>
@@ -401,6 +401,7 @@ function FinalizeChantierModal({
   serviceIds: string[];
   onClose: () => void;
 }) {
+  const tr = useT();
   const [totalPaid, setTotalPaid] = useState<string>(String(Math.round(totalPaidSoFar)));
   const [notes, setNotes] = useState<string>("");
 
@@ -428,10 +429,10 @@ function FinalizeChantierModal({
           <div className="w-12 h-12 mx-auto rounded-full bg-[color:var(--color-accent-soft)] flex items-center justify-center mb-3 text-xl">
             🎯
           </div>
-          <p className="text-[17px] font-semibold">Finalizar chantier</p>
+          <p className="text-[17px] font-semibold">{tr("contas.finalizeTitle")}</p>
           <p className="text-[12px] text-[color:var(--color-muted)] mt-1 leading-snug px-4">
-            Sua correção calibra os preços Rio para os próximos chantiers.<br/>
-            <span className="italic">La correction calibre les prix futurs</span>
+            {tr("contas.finalizeMsg")}<br/>
+            <span className="italic">{tr("contas.finalizeMsgSub")}</span>
           </p>
         </div>
 
@@ -498,6 +499,7 @@ function AddPaymentModal({
   onClose: () => void;
   onAdd: (input: Omit<Payment, "id" | "date" | "chantierId">) => void;
 }) {
+  const tr = useT();
   const [valorStr, setValorStr] = useState("");
   const [kind, setKind] = useState<PaymentKind>("mo");
   const [phaseId, setPhaseId] = useState<PhaseId | "">("");
@@ -536,7 +538,7 @@ function AddPaymentModal({
           <button onClick={onClose} className="text-[15px] text-[color:var(--color-muted)]">
             Cancelar
           </button>
-          <p className="text-[15px] font-semibold">Novo pagamento</p>
+          <p className="text-[15px] font-semibold">{tr("contas.newPayment")}</p>
           <button
             onClick={handleSave}
             disabled={!canSave}
