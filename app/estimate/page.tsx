@@ -630,6 +630,16 @@ function Detail({
         </button>
       </div>
 
+      {/* Team quick picker — impact direct sur temps + prix, visible sans clic */}
+      <TeamQuickPicker
+        oficiais={config.oficiais}
+        ajudantes={config.ajudantes}
+        diariaOficial={config.diariaOficial}
+        diariaAjudante={config.diariaAjudante}
+        days={chantierEst.days}
+        onChange={patch => setConfig({ ...config, ...patch })}
+      />
+
       {/* Timeline visuel des phases */}
       <PhaseTimelineSection chantierEst={chantierEst} />
 
@@ -1073,6 +1083,147 @@ function PostSurfaceInput({
         className="w-14 text-center bg-transparent border-none text-[15px] font-semibold num text-[color:var(--color-ink)] outline-none"
       />
       <button onClick={() => onDelta(1)}>+</button>
+    </div>
+  );
+}
+
+// Team picker rapide visible en haut du devis — impact direct sur temps + coût
+// mão-de-obra. Presets Solo/Duo/Trio/Time + steppers oficiais/ajudantes.
+function TeamQuickPicker({
+  oficiais, ajudantes, diariaOficial, diariaAjudante, days, onChange,
+}: {
+  oficiais: number;
+  ajudantes: number;
+  diariaOficial: number;
+  diariaAjudante: number;
+  days: number;
+  onChange: (patch: Partial<{ oficiais: number; ajudantes: number }>) => void;
+}) {
+  const total = oficiais + ajudantes;
+  const dailyCost = oficiais * diariaOficial + ajudantes * diariaAjudante;
+  const totalMO = Math.round(days * dailyCost);
+
+  const presets: { label: string; oficiais: number; ajudantes: number }[] = [
+    { label: "Solo",  oficiais: 1, ajudantes: 0 },
+    { label: "Dúo",   oficiais: 1, ajudantes: 1 },
+    { label: "Trio",  oficiais: 2, ajudantes: 1 },
+    { label: "Time",  oficiais: 3, ajudantes: 2 },
+  ];
+
+  return (
+    <div className="px-6 mb-4 fade-in fade-in-2">
+      <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-2 px-1">
+        Sua equipe
+        <span className="ml-2 normal-case tracking-normal font-normal text-[color:var(--color-muted)]">
+          · Ton équipe
+        </span>
+      </p>
+
+      <div className="card-outlined p-4 space-y-3">
+        {/* Presets rapides */}
+        <div className="grid grid-cols-4 gap-2">
+          {presets.map(p => {
+            const active = p.oficiais === oficiais && p.ajudantes === ajudantes;
+            return (
+              <button
+                key={p.label}
+                onClick={() => onChange({ oficiais: p.oficiais, ajudantes: p.ajudantes })}
+                className={`py-2 rounded-xl text-[12px] font-semibold transition ${
+                  active
+                    ? "bg-[color:var(--color-accent)] text-white"
+                    : "bg-[color:var(--color-bg-2)] text-[color:var(--color-ink)] hover:bg-[color:var(--color-line)]"
+                }`}
+              >
+                {p.label}
+                <span className={`block text-[9px] font-normal mt-0.5 ${active ? "text-white/80" : "text-[color:var(--color-muted)]"}`}>
+                  {p.oficiais}o {p.ajudantes > 0 ? `+ ${p.ajudantes}a` : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Steppers Oficiais / Ajudantes */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <TeamStepper
+            label="Oficiais"
+            emoji="👷"
+            value={oficiais}
+            min={1}
+            max={5}
+            onChange={n => onChange({ oficiais: n })}
+          />
+          <TeamStepper
+            label="Ajudantes"
+            emoji="🧑‍🔧"
+            value={ajudantes}
+            min={0}
+            max={5}
+            onChange={n => onChange({ ajudantes: n })}
+          />
+        </div>
+
+        {/* Résumé impact direct */}
+        <div className="pt-2 border-t border-[color:var(--color-line)] flex items-baseline justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
+              {total} pessoa{total > 1 ? "s" : ""} · {days} {days === 1 ? "dia" : "dias"}
+            </p>
+            <p className="text-[11px] text-[color:var(--color-muted)] num mt-0.5">
+              R$ {dailyCost.toLocaleString("pt-BR")}/dia
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
+              MO total
+            </p>
+            <p className="text-[16px] font-bold num">
+              R$ {totalMO.toLocaleString("pt-BR")}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamStepper({
+  label, emoji, value, min, max, onChange,
+}: {
+  label: string;
+  emoji: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <div className="rounded-xl bg-[color:var(--color-bg-2)] px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium mb-1">
+        {label}
+      </p>
+      <div className="flex items-center justify-between">
+        <span className="text-[15px] font-bold num flex items-center gap-1">
+          <span className="text-base">{emoji}</span>
+          {value}
+        </span>
+        <div className="flex gap-1">
+          <button
+            onClick={() => onChange(Math.max(min, value - 1))}
+            disabled={value <= min}
+            className="w-7 h-7 rounded-lg bg-white text-[15px] font-bold flex items-center justify-center disabled:opacity-30 active:scale-95 transition"
+          >
+            −
+          </button>
+          <button
+            onClick={() => onChange(Math.min(max, value + 1))}
+            disabled={value >= max}
+            className="w-7 h-7 rounded-lg bg-white text-[15px] font-bold flex items-center justify-center disabled:opacity-30 active:scale-95 transition"
+          >
+            +
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
