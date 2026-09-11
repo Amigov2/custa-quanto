@@ -14,6 +14,7 @@ import { compressImage, makeThumbnail, PLACEHOLDER_THUMB } from "@/lib/image_pro
 import BeforeAfterSlider from "@/app/components/BeforeAfterSlider";
 import type { AfterStyle } from "@/lib/gemini_image";
 import { getCurrentLang, bcp47Of, onLangChange, type LangCode } from "@/lib/ui_lang";
+import { useT } from "@/lib/i18n";
 import { saveLearning, summarizeLearnings, countLearnings } from "@/lib/learnings";
 import { summarizePreferences, countPreferenceSignals } from "@/lib/preferences";
 import CreditsBadge from "@/app/components/CreditsBadge";
@@ -73,6 +74,7 @@ function FotoPageInner() {
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [userScope, setUserScope] = useState<string>("");
   const [fotoUiLang, setFotoUiLang] = useState<LangCode>("pt");
+  const tr = useT();
   const [photoId, setPhotoId] = useState<string | null>(null);
   const [afterImage, setAfterImage] = useState<{ src: string; style: AfterStyle; mode: "gemini" | "demo" } | null>(null);
   const [afterLoading, setAfterLoading] = useState<AfterStyle | null>(null);
@@ -321,8 +323,8 @@ function FotoPageInner() {
           </div>
         )}
         <div className="px-6 pt-6 pb-2 fade-in">
-          <h1 className="large-title">Analisar foto</h1>
-          <p className="text-[13px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">Analyser une photo</p>
+          <h1 className="large-title">{tr("foto.analyze")}</h1>
+          <p className="text-[13px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">{tr("foto.analyzeSub")}</p>
         </div>
 
         <input
@@ -349,17 +351,17 @@ function FotoPageInner() {
               <div className="w-20 h-20 rounded-full bg-[color:var(--color-accent)]/10 mx-auto mb-4 flex items-center justify-center text-4xl">
                 📸
               </div>
-              <p className="text-[15px] font-medium mb-1">Tire uma foto do cômodo</p>
-              <p className="text-[12px] text-[color:var(--color-ink-2)] opacity-95 mb-4">Prends une photo de la pièce</p>
+              <p className="text-[15px] font-medium mb-1">{tr("foto.takePhoto")}</p>
+              <p className="text-[12px] text-[color:var(--color-ink-2)] opacity-95 mb-4">{tr("foto.takePhotoSub")}</p>
               <p className="text-[13px] text-[color:var(--color-muted)] max-w-[280px] mx-auto mb-6 leading-relaxed">
-                A IA detecta o que precisa ser feito e sugere o metrage aproximado. Você valida antes de calcular.
+                {tr("foto.aiHelp")}
               </p>
               <span className="btn-primary rounded-2xl px-6 py-3 text-[15px] font-semibold inline-flex items-center gap-2">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                   <circle cx="12" cy="13" r="4" />
                 </svg>
-                Abrir câmera
+                {tr("foto.openCamera")}
               </span>
             </label>
 
@@ -369,11 +371,10 @@ function FotoPageInner() {
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <polyline points="21 15 16 10 5 21" />
               </svg>
-              Ou escolher da galeria
-              <span className="text-[11px] opacity-90 text-[color:var(--color-ink-2)] ml-1">· depuis la galerie</span>
+              {tr("foto.chooseGallery")}
             </label>
             <p className="text-[11px] text-[color:var(--color-muted)] text-center mt-4 leading-snug">
-              💡 Tire com boa iluminação, mostrando o máximo do cômodo. Inclua uma porta ou móvel se possível — ajuda para estimar tamanho.
+              {tr("foto.lightingTip")}
             </p>
 
             {(learningsCount >= 3 || countPreferenceSignals() >= 3) && (
@@ -394,7 +395,7 @@ function FotoPageInner() {
             {drafts.length > 0 && !targetChantierId && (
               <div className="mt-8">
                 <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
-                  Rascunhos <span className="text-[10px] normal-case tracking-normal opacity-70">· non vinculadas a um chantier ({drafts.length})</span>
+                  {tr("foto.drafts")} <span className="text-[10px] normal-case tracking-normal opacity-70">· {tr("foto.draftsSub")} ({drafts.length})</span>
                 </p>
                 <div className="space-y-2">
                   {drafts.map(rec => {
@@ -519,13 +520,13 @@ function FotoPageInner() {
             {photoId && !targetChantierId && (
               <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-[#34c759]/10 text-[#34c759] text-[12px] font-medium">
                 <span>✓</span>
-                <span>Salvo em Rascunhos</span>
+                <span>{tr("foto.savedDraft")}</span>
                 <button
                   type="button"
                   onClick={reset}
                   className="ml-auto text-[color:var(--color-accent)] text-[11px] font-semibold"
                 >
-                  Analisar outra foto →
+                  {tr("foto.analyzeAnother")}
                 </button>
               </div>
             )}
@@ -804,8 +805,8 @@ function FotoPageInner() {
             {analysis.itens_detectados.length > 0 && (
               <div>
                 <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-2">
-                  O que precisa ser feito
-                  <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Ce qu'il faut faire</span>
+                  {tr("foto.itens")}
+                  <span className="block normal-case tracking-normal text-[11px] opacity-95 font-normal text-[color:var(--color-ink-2)]">{tr("foto.itensSub")}</span>
                 </p>
                 <div className="card-outlined p-4 space-y-2.5">
                   {analysis.itens_detectados.map((it, i) => (
@@ -836,8 +837,8 @@ function FotoPageInner() {
                 <summary>
                   <span className="accordion-icon bg-[#fff4e6]">🧴</span>
                   <span className="flex-1">
-                    <span className="block text-[14px] font-semibold leading-tight">Produtos recomendados</span>
-                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.produtos_recomendados.length} recomandações · Produits recommandés</span>
+                    <span className="block text-[14px] font-semibold leading-tight">{tr("foto.produtos")}</span>
+                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.produtos_recomendados.length} · {tr("foto.produtosSub")}</span>
                   </span>
                 </summary>
                 <div className="accordion-body space-y-2 pt-3">
@@ -956,8 +957,8 @@ function FotoPageInner() {
                 <summary>
                   <span className="accordion-icon bg-[#e8f2ff]">📋</span>
                   <span className="flex-1">
-                    <span className="block text-[14px] font-semibold leading-tight">Como aplicar</span>
-                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.passo_a_passo.length} passos · Comment appliquer</span>
+                    <span className="block text-[14px] font-semibold leading-tight">{tr("foto.passos")}</span>
+                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.passo_a_passo.length} · {tr("foto.passosSub")}</span>
                   </span>
                 </summary>
                 <div className="accordion-body pt-3">
@@ -1047,8 +1048,8 @@ function FotoPageInner() {
                 <summary>
                   <span className="accordion-icon bg-[#fff9db]">💡</span>
                   <span className="flex-1">
-                    <span className="block text-[14px] font-semibold leading-tight">Observações</span>
-                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.observacoes.length} pontos · Remarques</span>
+                    <span className="block text-[14px] font-semibold leading-tight">{tr("foto.observacoes")}</span>
+                    <span className="block text-[11px] text-[color:var(--color-muted)]">{analysis.observacoes.length} · {tr("foto.observacoesSub")}</span>
                   </span>
                 </summary>
                 <div className="accordion-body pt-3">

@@ -18,6 +18,7 @@ import {
 } from "@/lib/payments";
 import { getPhotosByChantier, onPhotosChange, type PhotoRecord } from "@/lib/photo_history";
 import { getFeedbackForChantier, saveFeedback, onFeedbacksChange, type PriceFeedback } from "@/lib/price_feedback";
+import { useT } from "@/lib/i18n";
 import type { Chantier } from "@/lib/types";
 
 export default function ContasPage() {
@@ -29,6 +30,7 @@ export default function ContasPage() {
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
   const [feedback, setFeedback] = useState<PriceFeedback | undefined>(undefined);
   const [ready, setReady] = useState(false);
+  const tr = useT();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
 
@@ -99,7 +101,7 @@ export default function ContasPage() {
       <div className="max-w-md mx-auto pb-32">
         {/* Résumé grand */}
         <div className="px-6 pt-6 pb-2 fade-in">
-          <h1 className="large-title">Contas</h1>
+          <h1 className="large-title">{tr("contas.title")}</h1>
         </div>
 
         <div className="px-6 pt-4 pb-6 fade-in fade-in-1">
@@ -146,7 +148,7 @@ export default function ContasPage() {
                 <span>🎯</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-semibold text-[#34c759]">
-                    Chantier finalizado — {fmtBRL(feedback.totalPaid)} pago
+                    {tr("contas.finalized")} — {fmtBRL(feedback.totalPaid)} {tr("card.paid")}
                   </p>
                   <p className="text-[10px] text-[color:var(--color-muted)]">
                     Sua correção calibra as estimativas futuras
@@ -158,7 +160,7 @@ export default function ContasPage() {
                 onClick={() => setShowFinalizeModal(true)}
                 className="w-full mt-4 rounded-xl bg-[color:var(--color-accent)] text-white py-2.5 text-[13px] font-semibold flex items-center justify-center gap-2"
               >
-                🎯 Finalizar chantier — quanto pagou vraiment ?
+                {tr("contas.finalize")}
               </button>
             ) : null}
           </div>
@@ -168,7 +170,7 @@ export default function ContasPage() {
         {progress!.byPhase.length > 0 && (
           <div className="px-6 mb-8 fade-in fade-in-2">
             <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-              Por fase
+              {tr("contas.byPhase")}
             </p>
             <div className="card-outlined p-4 space-y-4">
               {progress!.byPhase.map(ph => (
@@ -217,7 +219,7 @@ export default function ContasPage() {
         <div className="px-6 mb-6 fade-in fade-in-3">
           <div className="flex items-center justify-between mb-3 px-2">
             <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
-              Fotos
+              {tr("contas.photos")}
             </p>
             {photos.length > 0 && (
               <span className="text-[11px] text-[color:var(--color-muted)] num">{photos.length}</span>
@@ -231,9 +233,9 @@ export default function ContasPage() {
               <div className="w-12 h-12 rounded-full bg-[color:var(--color-accent-soft)] mx-auto mb-2 flex items-center justify-center text-xl">
                 📸
               </div>
-              <p className="text-[13px] font-medium mb-0.5">Adicionar primeira foto</p>
+              <p className="text-[13px] font-medium mb-0.5">{tr("contas.addFirstPhoto")}</p>
               <p className="text-[11px] text-[color:var(--color-muted)]">
-                Documenta o avanço do chantier · La progression du chantier
+                {tr("contas.addPhotoSub")}
               </p>
             </Link>
           ) : (
@@ -270,7 +272,7 @@ export default function ContasPage() {
         <div className="px-6 mb-8 fade-in fade-in-3">
           <div className="flex items-center justify-between mb-3 px-2">
             <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
-              Registros
+              {tr("contas.records")}
             </p>
             {payments.length > 0 && (
               <span className="text-[11px] text-[color:var(--color-muted)] num">{payments.length}</span>
@@ -283,7 +285,7 @@ export default function ContasPage() {
                 💰
               </div>
               <p className="text-[14px] text-[color:var(--color-muted)] max-w-[220px] mx-auto">
-                Nenhum pagamento registrado ainda. Comece pelo botão abaixo.
+                {tr("contas.noRecords")}
               </p>
             </div>
           ) : (
@@ -361,7 +363,7 @@ export default function ContasPage() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Registrar pagamento
+            {tr("contas.registerPayment")}
           </button>
         </div>
       </div>
