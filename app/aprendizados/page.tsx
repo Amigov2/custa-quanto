@@ -18,22 +18,24 @@ import {
 import { computePreferences } from "@/lib/preferences";
 import { loadChantiers } from "@/lib/storage";
 import { fmtBRL } from "@/lib/estimate";
+import { useT } from "@/lib/i18n";
 
 const AMBIENTE_EMOJI: Record<string, string> = {
   cozinha: "🍳", banheiro: "🚽", sala: "🛋️", quarto: "🛏️",
   escritorio: "💼", fachada: "🏠", area_externa: "🌳", outro: "📐",
 };
 
-const LEARNING_TYPE_LABEL: Record<string, { label: string; icon: string; color: string }> = {
-  ambiente: { label: "Correção de ambiente", icon: "🏷️", color: "#0071e3" },
-  m2_delta: { label: "Correção de m²", icon: "📏", color: "#ff9500" },
-  scope: { label: "Escopo digitado", icon: "✏️", color: "#34c759" },
-};
-
 export default function AprendizadosPage() {
+  const tr = useT();
   const [learnings, setLearnings] = useState<LearningRecord[]>([]);
   const [feedbacks, setFeedbacks] = useState<PriceFeedback[]>([]);
   const [ready, setReady] = useState(false);
+
+  const LEARNING_TYPE_LABEL: Record<string, { label: string; icon: string; color: string }> = {
+    ambiente: { label: tr("apr.correctionAmbiente"), icon: "🏷️", color: "#0071e3" },
+    m2_delta: { label: tr("apr.correctionM2"), icon: "📏", color: "#ff9500" },
+    scope: { label: tr("apr.correctionScope"), icon: "✏️", color: "#34c759" },
+  };
 
   useEffect(() => {
     setLearnings(loadLearnings());
@@ -54,17 +56,17 @@ export default function AprendizadosPage() {
   const totalSignal = learnings.length + feedbacks.length + (prefs?.totalSignal ?? 0);
 
   function handleClearAll() {
-    if (!confirm("Apagar TODAS as correções aprendidas ? Os feedbacks de preços não serão afetados.")) return;
+    if (!confirm(tr("apr.confirmClearAll"))) return;
     clearAllLearnings();
   }
 
   function handleDeleteLearning(id: string) {
-    if (!confirm("Apagar esta correção ?")) return;
+    if (!confirm(tr("apr.confirmDeleteLearning"))) return;
     deleteLearning(id);
   }
 
   function handleDeleteFeedback(id: string) {
-    if (!confirm("Apagar este feedback de preço ? Os preços futuros voltarão a ser calibrados apenas com base Rio Centro.")) return;
+    if (!confirm(tr("apr.confirmDeleteFeedback"))) return;
     deleteFeedback(id);
   }
 
@@ -76,21 +78,19 @@ export default function AprendizadosPage() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            Início
-            <span className="text-[11px] opacity-90 text-[color:var(--color-ink-2)] ml-0.5">· accueil</span>
+            {tr("nav.back")}
           </Link>
-          <p className="text-[15px] font-semibold">🧠 Aprendizados</p>
+          <p className="text-[15px] font-semibold">🧠 {tr("apr.pageTitle")}</p>
           <div className="w-14" />
         </div>
       </div>
 
       <div className="max-w-md mx-auto pb-16">
         <div className="px-6 pt-6 pb-2 fade-in">
-          <h1 className="large-title">O que a IA aprendeu</h1>
-          <p className="text-[13px] text-[color:var(--color-ink-2)] opacity-95 mt-0.5">Ce que l&apos;IA a appris de toi</p>
+          <h1 className="large-title">{tr("apr.title")}</h1>
           {ready && totalSignal >= 3 && (
             <p className="text-[11px] text-[color:var(--color-accent)] mt-2 font-medium">
-              {totalSignal} sinais coletados · influenciam as futuras análises
+              {totalSignal} {tr("apr.signalsCollected")}
             </p>
           )}
         </div>
@@ -101,10 +101,9 @@ export default function AprendizadosPage() {
               <div className="w-14 h-14 rounded-full bg-[color:var(--color-bg-2)] mx-auto mb-3 flex items-center justify-center text-2xl">
                 📚
               </div>
-              <p className="text-[14px] font-medium mb-1.5">Nada aprendido ainda</p>
+              <p className="text-[14px] font-medium mb-1.5">{tr("apr.emptyTitle")}</p>
               <p className="text-[12px] text-[color:var(--color-muted)] leading-relaxed max-w-[280px] mx-auto">
-                Comece a corrigir análises, digitar escopos ou finalizar chantiers.
-                A IA vai aprender com suas ações.
+                {tr("apr.emptyText")}
               </p>
             </div>
           </div>
@@ -115,19 +114,19 @@ export default function AprendizadosPage() {
           <div className="px-6 pt-6 fade-in fade-in-1">
             <div className="flex items-center justify-between mb-3 px-2">
               <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">
-                Correções
+                {tr("apr.corrections")}
               </p>
               <button
                 onClick={handleClearAll}
                 className="text-[11px] text-[color:var(--color-muted)] hover:text-[#ff3b30] px-2 py-1"
               >
-                Limpar tudo
+                {tr("apr.clearAll")}
               </button>
             </div>
             <div className="space-y-2">
               {sortedLearnings.map(l => {
                 const meta = LEARNING_TYPE_LABEL[l.type];
-                const date = new Date(l.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+                const date = new Date(l.dateISO).toLocaleDateString(document.documentElement.lang || "pt-BR", { day: "2-digit", month: "short" });
                 let desc = "";
                 if (l.type === "ambiente") {
                   const from = AMBIENTE_EMOJI[l.context.ambienteDetected || ""] || "";
@@ -157,7 +156,7 @@ export default function AprendizadosPage() {
                       <button
                         onClick={() => handleDeleteLearning(l.id)}
                         className="text-[11px] text-[color:var(--color-muted)] hover:text-[#ff3b30] px-2 py-1"
-                        aria-label="Excluir"
+                        aria-label={tr("card.delete")}
                       >
                         ✕
                       </button>
@@ -173,14 +172,14 @@ export default function AprendizadosPage() {
         {ready && sortedFeedbacks.length > 0 && (
           <div className="px-6 pt-6 fade-in fade-in-2">
             <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-              Chantiers finalizados
+              {tr("apr.chantiersDone")}
             </p>
             <div className="space-y-2">
               {sortedFeedbacks.map(f => {
-                const date = new Date(f.dateISO).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+                const date = new Date(f.dateISO).toLocaleDateString(document.documentElement.lang || "pt-BR", { day: "2-digit", month: "short" });
                 const delta = f.totalPaid - f.totalEstimated;
                 const deltaPct = f.totalEstimated > 0 ? (delta / f.totalEstimated) * 100 : 0;
-                const chantierName = chantierNameById[f.chantierId] || "Chantier";
+                const chantierName = chantierNameById[f.chantierId] || tr("home.chantier");
                 const isOver = delta > 0;
                 const isNear = Math.abs(deltaPct) < 5;
                 return (
@@ -205,7 +204,7 @@ export default function AprendizadosPage() {
                       <button
                         onClick={() => handleDeleteFeedback(f.id)}
                         className="text-[11px] text-[color:var(--color-muted)] hover:text-[#ff3b30] px-2 py-1"
-                        aria-label="Excluir"
+                        aria-label={tr("card.delete")}
                       >
                         ✕
                       </button>
@@ -221,13 +220,13 @@ export default function AprendizadosPage() {
         {ready && prefs && prefs.totalSignal >= 3 && (
           <div className="px-6 pt-6 fade-in fade-in-3">
             <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-              Preferências detectadas
-              <span className="ml-2 text-[10px] normal-case tracking-normal font-normal text-[color:var(--color-muted)]">(automatique)</span>
+              {tr("apr.preferences")}
+              <span className="ml-2 text-[10px] normal-case tracking-normal font-normal text-[color:var(--color-muted)]">({tr("apr.automatic")})</span>
             </p>
             <div className="card-outlined p-4 space-y-3">
               {prefs.favoriteBrands.length > 0 && (
                 <div>
-                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">🏷️ Marcas favoritas</p>
+                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">🏷️ {tr("apr.favoriteBrands")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {prefs.favoriteBrands.map(b => (
                       <span key={b} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[color:var(--color-accent-soft)] text-[color:var(--color-accent)]">
@@ -239,7 +238,7 @@ export default function AprendizadosPage() {
               )}
               {prefs.styleHints.length > 0 && (
                 <div>
-                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">🎨 Estilos mencionados</p>
+                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">🎨 {tr("apr.mentionedStyles")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {prefs.styleHints.slice(0, 6).map(s => (
                       <span key={s} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#f5f5f7] text-[color:var(--color-ink)]">
@@ -251,17 +250,17 @@ export default function AprendizadosPage() {
               )}
               {prefs.budgetHint && (
                 <div>
-                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">💵 Perfil de orçamento</p>
+                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">💵 {tr("apr.budgetProfile")}</p>
                   <p className="text-[13px] font-medium capitalize">{prefs.budgetHint}</p>
                 </div>
               )}
               {prefs.recurrentAmbientes.length > 0 && (
                 <div>
-                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">🏠 Ambientes trabalhados</p>
+                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">🏠 {tr("apr.workedRooms")}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {prefs.recurrentAmbientes.map(a => (
                       <span key={a.ambiente} className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#f5f5f7] text-[color:var(--color-ink)]">
-                        {AMBIENTE_EMOJI[a.ambiente] || ""} {a.ambiente} · {a.count}×
+                        {AMBIENTE_EMOJI[a.ambiente] || ""} {tr(`amb.${a.ambiente}`)} · {a.count}×
                       </span>
                     ))}
                   </div>
@@ -269,14 +268,13 @@ export default function AprendizadosPage() {
               )}
               {prefs.avgPaidBRL && (
                 <div>
-                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">💰 Faixa habitual</p>
-                  <p className="text-[13px] font-medium num">~{fmtBRL(prefs.avgPaidBRL)} por chantier</p>
+                  <p className="text-[11px] text-[color:var(--color-muted)] mb-1">💰 {tr("apr.usualRange")}</p>
+                  <p className="text-[13px] font-medium num">~{fmtBRL(prefs.avgPaidBRL)} {tr("apr.perChantier")}</p>
                 </div>
               )}
             </div>
             <p className="text-[10px] text-[color:var(--color-muted)] mt-2 px-2 leading-relaxed">
-              Estas preferências são deduzidas dos seus chats, escopos, notas e chantiers finalizados.
-              Elas não podem ser editadas diretamente — mas se você excluir correções ou feedbacks acima, elas se atualizam.
+              {tr("apr.preferencesFooter")}
             </p>
           </div>
         )}

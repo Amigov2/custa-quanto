@@ -10,7 +10,7 @@ import { getMaterials, type Finish } from "@/lib/materials";
 import { loadChantiers, saveChantier } from "@/lib/storage";
 import { attachToChantier, getPhotosByChantier } from "@/lib/photo_history";
 import { buildShareUrl } from "@/lib/share_encoding";
-import { useT } from "@/lib/i18n";
+import { useT, t } from "@/lib/i18n";
 import type { ServicePost, Chantier } from "@/lib/types";
 import { PHASES, getPhaseForService, type PhaseId } from "@/lib/phases";
 import { detectAlerts, compareWithOrcamento, verdictLabel, type ComparisonResult } from "@/lib/alerts";
@@ -27,7 +27,7 @@ const FINISH_LABELS: { id: Finish; label: string }[] = [
 // pour que le prerendering Next.js 16 fonctionne en prod.
 export default function EstimatePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[13px] text-[color:var(--color-muted)]">Carregando…</div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-[13px] text-[color:var(--color-muted)]">{t("common.loading")}</div>}>
       <EstimatePageInner />
     </Suspense>
   );
@@ -233,7 +233,7 @@ function EstimatePageInner() {
           <div className="sticky-bottom-inner">
             <div className="flex items-center justify-between mb-3 px-1">
               <div>
-                <p className="text-[11px] text-[color:var(--color-muted)] uppercase tracking-wide font-medium">Total</p>
+                <p className="text-[11px] text-[color:var(--color-muted)] uppercase tracking-wide font-medium">{tr("est.total")}</p>
                 <p className="text-[20px] font-bold num">{fmtBRL(totalMid)}</p>
               </div>
               <div className="text-right">
@@ -308,6 +308,7 @@ function EstimatePageInner() {
 // STEP 1 — Pick macro (avec search + prix "a partir de")
 // ============================================================
 function PickMacro({ onPick }: { onPick: (id: string) => void }) {
+  const tr = useT();
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
 
@@ -335,9 +336,9 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
   return (
     <>
       <div className="px-6 pt-6 pb-3 fade-in">
-        <h1 className="large-title">O que você quer fazer?</h1>
+        <h1 className="large-title">{tr("pick.title")}</h1>
         <p className="text-[15px] text-[color:var(--color-muted)] mt-1">
-          Escolha um pacote pronto (cômodo completo) ou um serviço específico.
+          {tr("pick.subtitle")}
         </p>
       </div>
 
@@ -351,8 +352,8 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
             📸
           </span>
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-[14px] font-semibold text-[color:var(--color-accent)] leading-tight">Analisar por foto</p>
-            <p className="text-[11px] text-[color:var(--color-ink-2)] opacity-95 leading-tight mt-0.5">Analyser par photo · IA sugere as macros</p>
+            <p className="text-[14px] font-semibold text-[color:var(--color-accent)] leading-tight">{tr("pick.byPhoto")}</p>
+            <p className="text-[11px] text-[color:var(--color-ink-2)] opacity-95 leading-tight mt-0.5">{tr("pick.byPhotoSub")}</p>
           </div>
           <svg className="text-[color:var(--color-accent)] shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
             <polyline points="9 18 15 12 9 6" />
@@ -369,7 +370,7 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
           </svg>
           <input
             type="text"
-            placeholder="Buscar (cozinha, pintura, piso…)"
+            placeholder={tr("pick.search")}
             value={search}
             onChange={e => setSearch(e.target.value)}
             lang={typeof document !== "undefined" ? document.documentElement.lang || "pt-BR" : "pt-BR"}
@@ -381,7 +382,7 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
 
       {totalMatch === 0 ? (
         <div className="px-6 py-16 text-center">
-          <p className="text-[color:var(--color-muted)] text-[14px]">Nada encontrado para "{search}".</p>
+          <p className="text-[color:var(--color-muted)] text-[14px]">{tr("pick.noResults", { search })}</p>
         </div>
       ) : (
         filteredByGroup.map((g, gi) => (
@@ -400,9 +401,9 @@ function PickMacro({ onPick }: { onPick: (id: string) => void }) {
                   <span className="text-2xl">{m.emoji}</span>
                   <div className="w-full">
                     <p className="text-[14px] font-semibold leading-tight">{m.name}</p>
-                    <p className="text-[10px] text-[color:var(--color-muted)] mt-1 leading-tight">por {m.unit}</p>
+                    <p className="text-[10px] text-[color:var(--color-muted)] mt-1 leading-tight">{tr("pick.per")} {m.unit}</p>
                     <div className="mt-2 pt-2 border-t border-[color:var(--color-line)]">
-                      <p className="text-[10px] text-[color:var(--color-muted)] font-medium">a partir de</p>
+                      <p className="text-[10px] text-[color:var(--color-muted)] font-medium">{tr("pick.from")}</p>
                       <p className="text-[13px] font-bold num text-[color:var(--color-ink)]">
                         {fmtBRL(macroPrices[m.id])}
                       </p>
@@ -430,6 +431,7 @@ function PickQuantity({
   onNext: () => void;
   onBack: () => void;
 }) {
+  const tr = useT();
   const macroFr = getMacroFr(macro.id);
   return (
     <>
@@ -438,8 +440,7 @@ function PickQuantity({
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          voltar
-          <span className="text-[10px] opacity-60 ml-0.5">· retour</span>
+          {tr("pick.back")}
         </button>
         <div className="flex items-start gap-3 mb-2">
           <span className="text-3xl leading-none pt-0.5">{macro.emoji}</span>
@@ -458,14 +459,12 @@ function PickQuantity({
 
       <div className="px-6 mb-8 fade-in fade-in-1">
         <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-          Qual o tamanho?
-          <span className="block normal-case tracking-normal text-[10px] opacity-70 font-normal">Quelle taille ?</span>
+          {tr("pick.whichSize")}
         </p>
         <div className="card p-6">
           <div className="flex items-center justify-between mb-6 gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-[15px] text-[color:var(--color-ink)] leading-tight">Meça a área e ajuste</p>
-              <p className="text-[11px] text-[color:var(--color-muted)] opacity-70 mt-0.5">Mesure la surface et ajuste</p>
+              <p className="text-[15px] text-[color:var(--color-ink)] leading-tight">{tr("pick.measureAdjust")}</p>
             </div>
             <QtyInput
               value={qty}
@@ -482,22 +481,18 @@ function PickQuantity({
             <span>{macro.maxQty}</span>
           </div>
           <p className="text-[11px] text-[color:var(--color-muted)] mt-4 leading-relaxed">
-            Padrão sugerido: <b>{macro.defaultQty} {macro.unit}</b>. Meça com uma trena para mais precisão.
-            <span className="block opacity-70 mt-0.5">Standard suggéré. Mesure au mètre ruban pour plus de précision.</span>
+            {tr("pick.suggested")}: <b>{macro.defaultQty} {macro.unit}</b>. {tr("pick.measureTip")}
           </p>
         </div>
       </div>
 
       <div className="px-6">
-        <button onClick={onNext} className="w-full btn-primary rounded-2xl py-4 text-[16px] font-semibold flex flex-col items-center justify-center gap-0.5">
-          <span className="flex items-center gap-2">
-            Ver detalhamento
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </span>
-          <span className="text-[10px] opacity-70 font-normal">Voir le détail</span>
+        <button onClick={onNext} className="w-full btn-primary rounded-2xl py-4 text-[16px] font-semibold flex items-center justify-center gap-2">
+          {tr("pick.seeDetail")}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4}>
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
         </button>
       </div>
     </>
@@ -555,7 +550,7 @@ function Detail({
           <h1 className="text-[22px] font-bold leading-tight">{macro?.name || chantierName || "Chantier"}</h1>
         </div>
         {isEdit && (
-          <p className="text-[12px] text-[color:var(--color-muted)] mt-1 ml-11">Editando chantier salvo</p>
+          <p className="text-[12px] text-[color:var(--color-muted)] mt-1 ml-11">{tr("est.editingSaved")}</p>
         )}
       </div>
 
@@ -586,21 +581,21 @@ function Detail({
 
           <div className="space-y-2 text-[13px]">
             {config.materialMode !== "client" && (
-              <ReceiptLine dot="#0071e3" label="Material" value={fmtBRL(midOf(chantierEst.material))} />
+              <ReceiptLine dot="#0071e3" label={tr("est.material")} value={fmtBRL(midOf(chantierEst.material))} />
             )}
             {config.modoContrato === "diaria" ? (
-              <ReceiptLine dot="#8e8e93" label="Mão de obra (diária)" hint={`${chantierEst.days}d · R$${config.diariaOficial}/${config.diariaAjudante}`} value={fmtBRL(midOf(chantierEst.moFinal))} />
+              <ReceiptLine dot="#8e8e93" label={tr("est.laborDaily")} hint={`${chantierEst.days}d · R$${config.diariaOficial}/${config.diariaAjudante}`} value={fmtBRL(midOf(chantierEst.moFinal))} />
             ) : (
               <>
-                <ReceiptLine dot="#8e8e93" label="Mão de obra bruta"                                        value={fmtBRL(midOf(chantierEst.moBase))} />
-                <ReceiptLine dot="#af52de" label={`Encargos sociais`}  hint={fmtPct(config.encargos)}       value={fmtBRL(midOf(chantierEst.moEncargos))} />
-                <ReceiptLine dot="#ff9500" label={`BDI empreiteira`}   hint={fmtPct(config.bdi)}            value={fmtBRL(midOf(chantierEst.bdi))} />
+                <ReceiptLine dot="#8e8e93" label={tr("est.grossLabor")}                                     value={fmtBRL(midOf(chantierEst.moBase))} />
+                <ReceiptLine dot="#af52de" label={tr("est.socialCharges")}  hint={fmtPct(config.encargos)}  value={fmtBRL(midOf(chantierEst.moEncargos))} />
+                <ReceiptLine dot="#ff9500" label={tr("est.bdi")}            hint={fmtPct(config.bdi)}       value={fmtBRL(midOf(chantierEst.bdi))} />
               </>
             )}
-            <ReceiptLine   dot="#ff3b30" label={`Contingência`}      hint={fmtPct(config.contingencia)}   value={fmtBRL(midOf(chantierEst.contingencia))} />
+            <ReceiptLine   dot="#ff3b30" label={tr("est.contingency")}   hint={fmtPct(config.contingencia)}   value={fmtBRL(midOf(chantierEst.contingencia))} />
             <div className="divider my-2" />
             <div className="flex items-center justify-between pt-1">
-              <span className="font-semibold text-[14px]">Total final</span>
+              <span className="font-semibold text-[14px]">{tr("est.finalTotal")}</span>
               <span className="font-bold num text-[15px]">{fmtBRL(totalMid)}</span>
             </div>
           </div>
@@ -679,7 +674,7 @@ function Detail({
             <div>
               <p className="text-[13px] font-medium mb-2">
                 Modo de contratação
-                <span className="block text-[10px] text-[color:var(--color-muted)] opacity-70 font-normal">Type de contrat</span>
+                <span className="block text-[10px] text-[color:var(--color-muted)] opacity-70 font-normal">{tr("est.contractType")}</span>
               </p>
               <div className="segmented">
                 <button
@@ -722,14 +717,14 @@ function Detail({
             ) : (
               <>
                 <ConfigSlider
-                  label="BDI empreiteira"
+                  label={tr("est.bdi")}
                   tip="Frais généraux + marge. Padrão BR 25-35%."
                   value={config.bdi}
                   onChange={v => setConfig({ ...config, bdi: v })}
                   min={0} max={0.5} step={0.01}
                 />
                 <ConfigSlider
-                  label="Encargos sociais sur MO"
+                  label={tr("est.encargosMO")}
                   tip="INSS + FGTS + férias + 13º. Padrão BR ~80% sur MO bruta."
                   value={config.encargos}
                   onChange={v => setConfig({ ...config, encargos: v })}
@@ -749,7 +744,7 @@ function Detail({
             <div className="divider" />
 
             <div>
-              <p className="text-[13px] font-medium mb-2">Modo material</p>
+              <p className="text-[13px] font-medium mb-2">{tr("est.materialMode")}</p>
               <div className="segmented">
                 <button
                   onClick={() => setConfig({ ...config, materialMode: "included" })}
@@ -787,7 +782,7 @@ function Detail({
 
       {/* Finish */}
       <div className="px-6 mb-8 fade-in fade-in-3">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">Acabamento global</p>
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">{tr("est.acabamento")}</p>
         <div className="segmented">
           {FINISH_LABELS.map(f => (
             <button key={f.id} onClick={() => setFinish(f.id)} className={`seg-btn ${finish === f.id ? "active" : ""}`}>
@@ -896,7 +891,7 @@ function Detail({
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         <MiniStat label={config.materialMode === "client" ? "Só MO" : "Material"} value={fmtBRL(midOf(config.materialMode === "client" ? [0, 0] : est.material))} />
                         <MiniStat label="MO + enc." value={fmtBRL(midOf(est.moFinal))} />
-                        <MiniStat label="Prazo" value={`${est.days}d`} />
+                        <MiniStat label={tr("est.prazo")} value={`${est.days}d`} />
                       </div>
                     )}
 
@@ -997,7 +992,7 @@ function Detail({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-[11px] text-[color:var(--color-muted)]">Lista detalhada em breve para este serviço.</p>
+                    <p className="text-[11px] text-[color:var(--color-muted)]">{tr("est.serviceDetailSoon")}</p>
                   )}
                 </div>
               </details>
@@ -1319,6 +1314,7 @@ function CompareModal({
   onClose: () => void;
   onResult: (r: ComparisonResult) => void;
 }) {
+  const tr = useT();
   const [totalTxt, setTotalTxt] = useState("");
   const [mode, setMode] = useState<"total" | "detail">("total");
   const [postValues, setPostValues] = useState<Record<string, string>>({});
@@ -1362,9 +1358,14 @@ function CompareModal({
         setPostValues(values);
       }
       const matched = parsed.linhas.filter(l => l.servico_matched).length;
-      setAiSummary(
-        `✓ ${parsed.linhas.length} linhas lidas · ${matched} associadas a serviços${parsed.linhas_nao_matchadas > 0 ? ` · ${parsed.linhas_nao_matchadas} sem match` : ""}`,
-      );
+      const parts = [
+        `${parsed.linhas.length} ${tr("compare.linesRead")}`,
+        `${matched} ${tr("compare.associated")}`,
+      ];
+      if (parsed.linhas_nao_matchadas > 0) {
+        parts.push(`${parsed.linhas_nao_matchadas} ${tr("compare.noMatch")}`);
+      }
+      setAiSummary(`✓ ${parts.join(" · ")}`);
     } catch (e) {
       setAiError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -1396,7 +1397,7 @@ function CompareModal({
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col">
         <div className="p-5 flex items-center justify-between border-b border-[color:var(--color-line)]">
-          <p className="text-[16px] font-semibold">Comparar com orçamento</p>
+          <p className="text-[16px] font-semibold">{tr("compare.title")}</p>
           <button onClick={onClose} className="text-[color:var(--color-muted)]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -1408,8 +1409,8 @@ function CompareModal({
           {/* Upload orçamento (PDF ou photo) — parse automatique via Claude Vision */}
           <div className="rounded-2xl border border-dashed border-[color:var(--color-accent)]/40 bg-[color:var(--color-accent-soft)]/40 p-4">
             <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-2 px-1">
-              📸 Ler orçamento com IA
-              <span className="block normal-case tracking-normal text-[10px] opacity-95 font-normal text-[color:var(--color-ink-2)]">Lire un devis via IA</span>
+              {tr("compare.aiRead")}
+              <span className="block normal-case tracking-normal text-[10px] opacity-95 font-normal text-[color:var(--color-ink-2)]">{tr("compare.aiReadSub")}</span>
             </p>
             <input
               ref={aiInputRef}
@@ -1426,10 +1427,10 @@ function CompareModal({
               {aiParsing ? (
                 <>
                   <span className="inline-block w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Analisando o orçamento…
+                  {tr("compare.analyzing")}
                 </>
               ) : (
-                <>📤 Escolher PDF ou foto</>
+                <>{tr("compare.chooseFile")}</>
               )}
             </label>
             {aiSummary && (
@@ -1439,20 +1440,20 @@ function CompareModal({
               <p className="text-[11px] text-[#ff3b30] mt-2">{aiError}</p>
             )}
             <p className="text-[10px] text-[color:var(--color-muted)] mt-2 leading-snug">
-              A IA extrai as linhas do orçamento e associa cada uma aos serviços do chantier.
+              {tr("compare.aiHelp")}
             </p>
           </div>
 
           <div>
             <label className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-1.5 block px-1">
-              Valor total do orçamento (R$)
+              {tr("compare.value")}
             </label>
             <input
               type="text"
               inputMode="decimal"
               value={totalTxt}
               onChange={e => setTotalTxt(e.target.value)}
-              placeholder="Ex: 18500"
+              placeholder={tr("compare.valuePlaceholder")}
               className="w-full bg-[color:var(--color-bg-2)] rounded-xl px-4 py-3 text-[17px] font-semibold num outline-none placeholder:text-[color:var(--color-muted)] placeholder:font-normal focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
               autoFocus
             />
@@ -1460,15 +1461,15 @@ function CompareModal({
 
           <div>
             <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
-              Detalhamento por poste (opcional)
+              {tr("compare.detail")}
             </p>
             <div className="segmented">
-              <button onClick={() => setMode("total")} className={`seg-btn ${mode === "total" ? "active" : ""}`}>Só total</button>
-              <button onClick={() => setMode("detail")} className={`seg-btn ${mode === "detail" ? "active" : ""}`}>Detalhado</button>
+              <button onClick={() => setMode("total")} className={`seg-btn ${mode === "total" ? "active" : ""}`}>{tr("compare.modeTotal")}</button>
+              <button onClick={() => setMode("detail")} className={`seg-btn ${mode === "detail" ? "active" : ""}`}>{tr("compare.modeDetail")}</button>
             </div>
             {mode === "detail" && (
               <div className="mt-3 space-y-2">
-                <p className="text-[11px] text-[color:var(--color-muted)] px-1 leading-snug">Digite o preço do empreiteiro para cada poste que ele detalhou. Deixe em branco os postes sem detalhe.</p>
+                <p className="text-[11px] text-[color:var(--color-muted)] px-1 leading-snug">{tr("compare.detailHelp")}</p>
                 {chantierEst.estimates.map(e => (
                   <div key={e.post.serviceId} className="flex items-center gap-2">
                     <span className="text-base shrink-0">{e.svc.emoji}</span>
@@ -1492,14 +1493,14 @@ function CompareModal({
         </div>
         <div className="border-t border-[color:var(--color-line)] grid grid-cols-2">
           <button onClick={onClose} className="py-3.5 text-[15px] text-[color:var(--color-muted)] border-r border-[color:var(--color-line)]">
-            Cancelar
+            {tr("common.cancel")}
           </button>
           <button
             onClick={submit}
             disabled={!totalTxt.trim()}
             className="py-3.5 text-[15px] font-semibold text-[color:var(--color-accent)] disabled:opacity-40"
           >
-            Comparar
+            {tr("compare.compare")}
           </button>
         </div>
       </div>
@@ -1508,6 +1509,7 @@ function CompareModal({
 }
 
 function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; onClose: () => void }) {
+  const tr = useT();
   const v = verdictLabel(result.verdict);
   const isPositive = result.deltaAbs > 0;
 
@@ -1515,7 +1517,7 @@ function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; 
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col">
         <div className="p-5 flex items-center justify-between border-b border-[color:var(--color-line)]">
-          <p className="text-[16px] font-semibold">Resultado da comparação</p>
+          <p className="text-[16px] font-semibold">{tr("compare.result")}</p>
           <button onClick={onClose} className="text-[color:var(--color-muted)]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -1528,28 +1530,28 @@ function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; 
             <div className="inline-block px-3 py-1.5 rounded-full mb-4" style={{ background: v.color + "22", color: v.color }}>
               <p className="text-[11px] font-bold uppercase tracking-wide">{v.label}</p>
             </div>
-            <p className="text-[12px] text-[color:var(--color-muted)] mb-1">Diferença</p>
+            <p className="text-[12px] text-[color:var(--color-muted)] mb-1">{tr("compare.difference")}</p>
             <div className="flex items-baseline justify-center gap-1">
               <span className="display text-4xl" style={{ color: v.color }}>
                 {isPositive ? "+" : ""}{fmtBRL(Math.abs(result.deltaAbs))}
               </span>
             </div>
             <p className="text-[13px] text-[color:var(--color-muted)] mt-1 num">
-              {isPositive ? "+" : ""}{Math.round(result.deltaPct * 100)}% vs nossa estimativa
+              {isPositive ? "+" : ""}{Math.round(result.deltaPct * 100)}% {tr("compare.vsEstimate")}
             </p>
           </div>
 
           <div className="card p-4 mb-4 space-y-2 text-[13px]">
             <div className="flex justify-between">
-              <span className="text-[color:var(--color-muted)]">Orçamento recebido</span>
+              <span className="text-[color:var(--color-muted)]">{tr("compare.received")}</span>
               <span className="font-semibold num">{fmtBRL(result.totalRecebido)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[color:var(--color-muted)]">Nossa estimativa</span>
+              <span className="text-[color:var(--color-muted)]">{tr("compare.estimated")}</span>
               <span className="font-semibold num">{fmtBRL(result.estimatedMid)}</span>
             </div>
             <div className="flex justify-between text-[11px] text-[color:var(--color-muted)]">
-              <span>Faixa</span>
+              <span>{tr("est.range")}</span>
               <span className="num">{fmtBRL(result.estimatedRange[0])}–{fmtBRL(result.estimatedRange[1])}</span>
             </div>
           </div>
@@ -1557,7 +1559,7 @@ function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; 
           {result.perPost && result.perPost.length > 0 && (
             <div>
               <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-2 px-1">
-                Detalhamento por poste
+                {tr("compare.detailPerPost")}
               </p>
               <div className="space-y-1.5">
                 {result.perPost.map(p => {
@@ -1581,12 +1583,12 @@ function ComparisonResultModal({ result, onClose }: { result: ComparisonResult; 
           )}
 
           <p className="text-[10px] text-[color:var(--color-muted)] mt-5 leading-snug px-1 text-center">
-            Faixa média Rio Centro baseada em SINAPI RJ 2025 e 246 NFs reais. Diferenças podem ser justificadas por qualidade, urgência ou marca específica.
+            {tr("compare.disclaimer")}
           </p>
         </div>
         <div className="border-t border-[color:var(--color-line)] p-3">
           <button onClick={onClose} className="w-full py-3 text-[15px] font-semibold text-[color:var(--color-accent)]">
-            Fechar
+            {tr("common.close")}
           </button>
         </div>
       </div>
@@ -1609,6 +1611,7 @@ function ShareModal({
   setCopied: (b: boolean) => void;
   onClose: () => void;
 }) {
+  const tr = useT();
   // Construit un Chantier temporaire pour l'encoder — même sans sauvegarde préalable,
   // le lien contient toutes les data (pas besoin de backend).
   const shareUrl = useMemo(() => {
@@ -1671,9 +1674,9 @@ function ShareModal({
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
             </svg>
           </div>
-          <p className="text-[17px] font-semibold">Partilhar orçamento</p>
+          <p className="text-[17px] font-semibold">{tr("share.title")}</p>
           <p className="text-[13px] text-[color:var(--color-muted)] mt-1">
-            Lien público, sans compte utilisateur
+            {tr("share.public")}
           </p>
         </div>
 
@@ -1684,10 +1687,7 @@ function ShareModal({
           >
             <span className="accordion-icon bg-[color:var(--color-accent-soft)]">🔗</span>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold">{copied ? "✓ Link copiado !" : "Copiar link"}</p>
-              <p className="text-[11px] text-[color:var(--color-muted)] truncate">
-                Envie por onde quiser
-              </p>
+              <p className="text-[14px] font-semibold">{copied ? tr("share.linkCopied") : tr("share.copyLink")}</p>
             </div>
           </button>
 
@@ -1697,8 +1697,8 @@ function ShareModal({
           >
             <span className="accordion-icon bg-[#25D366]/10">💬</span>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold">Partilhar por WhatsApp</p>
-              <p className="text-[11px] text-[color:var(--color-muted)]">Mensagem pronta + link</p>
+              <p className="text-[14px] font-semibold">{tr("share.shareWA")}</p>
+              <p className="text-[11px] text-[color:var(--color-muted)]">{tr("share.shareWASub")}</p>
             </div>
           </button>
 
@@ -1708,15 +1708,15 @@ function ShareModal({
           >
             <span className="accordion-icon bg-[color:var(--color-bg-2)]">🖨</span>
             <div className="flex-1 min-w-0">
-              <p className="text-[14px] font-semibold">Imprimir / Salvar PDF</p>
-              <p className="text-[11px] text-[color:var(--color-muted)]">Exportar em PDF via impressora</p>
+              <p className="text-[14px] font-semibold">{tr("share.print")}</p>
+              <p className="text-[11px] text-[color:var(--color-muted)]">{tr("share.printSub")}</p>
             </div>
           </button>
         </div>
 
         <div className="border-t border-[color:var(--color-line)]">
           <button onClick={onClose} className="w-full py-3.5 text-[15px] text-[color:var(--color-muted)] hover:text-[color:var(--color-ink)] transition">
-            Fechar
+            {tr("common.close")}
           </button>
         </div>
       </div>
@@ -1757,7 +1757,7 @@ function SaveChantierModal({
             value={name}
             onChange={e => setName(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") onConfirm(); }}
-            placeholder="Ex: Cozinha Riachuelo"
+            placeholder={tr("est.chantierNamePlaceholder")}
             lang={typeof document !== "undefined" ? document.documentElement.lang || "pt-BR" : "pt-BR"}
             inputMode="text"
             className="w-full bg-[color:var(--color-bg-2)] rounded-xl px-4 py-3 text-[15px] outline-none placeholder:text-[color:var(--color-muted)] focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
@@ -1811,6 +1811,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 }
 
 function DaysBreakdownBlock({ post, config }: { post: ServicePost; config: EstimateConfig }) {
+  const tr = useT();
   const [open, setOpen] = useState(false);
   const b = explainDays(post, config);
   if (!b) return null;
@@ -1841,11 +1842,11 @@ function DaysBreakdownBlock({ post, config }: { post: ServicePost; config: Estim
         <div className="px-3 pb-3 pt-1 border-t border-[color:var(--color-line)]">
           <div className="space-y-1.5 text-[11px] leading-relaxed">
             <div className="flex items-center justify-between">
-              <span className="text-[color:var(--color-muted)]">Rendimento SINAPI</span>
+              <span className="text-[color:var(--color-muted)]">{tr("est.sinapiYield")}</span>
               <span className="num font-medium">{b.baseDaily} {b.unit}/dia</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[color:var(--color-muted)]">Quantidade</span>
+              <span className="text-[color:var(--color-muted)]">{tr("est.quantity")}</span>
               <span className="num font-medium">{fmtQty(b.qty)} {b.unit}</span>
             </div>
             <div className="flex items-center justify-between pt-1 border-t border-[color:var(--color-line)]">
@@ -1944,6 +1945,7 @@ function TeamPicker({
   config: EstimateConfig;
   setConfig: (c: EstimateConfig) => void;
 }) {
+  const tr = useT();
   const mult = teamMultiplier(config.oficiais, config.ajudantes);
   const speed = teamSpeedFactor(config.oficiais, config.ajudantes);
   const pct = Math.round((speed - 1) * 100);
@@ -1953,7 +1955,7 @@ function TeamPicker({
       <div className="flex items-baseline justify-between mb-1">
         <p className="text-[13px] font-medium">
           Equipe do chantier
-          <span className="block text-[10px] text-[color:var(--color-muted)] opacity-70 font-normal">Équipe du chantier</span>
+          <span className="block text-[10px] text-[color:var(--color-muted)] opacity-70 font-normal">{tr("est.teamName")}</span>
         </p>
         <span className="text-[11px] text-[color:var(--color-muted)] num">
           coef {mult.toFixed(1)} · {speed >= 1 ? `+${pct}%` : `${pct}%`} vs padrão
@@ -2094,6 +2096,7 @@ function AddServiceModal({
   onPick: (id: string) => void;
   onClose: () => void;
 }) {
+  const tr = useT();
   const q = search.trim().toLowerCase();
   const filtered = SERVICES.filter(s => {
     if (existingIds.has(s.id)) return false;
@@ -2105,7 +2108,7 @@ function AddServiceModal({
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center">
       <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col">
         <div className="p-5 flex items-center justify-between border-b border-[color:var(--color-line)]">
-          <p className="text-[16px] font-semibold">Adicionar serviço</p>
+          <p className="text-[16px] font-semibold">{tr("est.addServiceShort")}</p>
           <button onClick={onClose} className="text-[color:var(--color-muted)]">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -2125,7 +2128,7 @@ function AddServiceModal({
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-6">
           {filtered.length === 0 ? (
-            <p className="text-center text-[13px] text-[color:var(--color-muted)] py-8">Nenhum serviço disponível.</p>
+            <p className="text-center text-[13px] text-[color:var(--color-muted)] py-8">{tr("est.noServiceAvailable")}</p>
           ) : (
             <div className="space-y-1">
               {filtered.map(s => (
