@@ -10,6 +10,7 @@ import { getMaterials, type Finish } from "@/lib/materials";
 import { loadChantiers, saveChantier } from "@/lib/storage";
 import { attachToChantier, getPhotosByChantier } from "@/lib/photo_history";
 import { buildShareUrl } from "@/lib/share_encoding";
+import { useT } from "@/lib/i18n";
 import type { ServicePost, Chantier } from "@/lib/types";
 import { PHASES, getPhaseForService, type PhaseId } from "@/lib/phases";
 import { detectAlerts, compareWithOrcamento, verdictLabel, type ComparisonResult } from "@/lib/alerts";
@@ -35,6 +36,7 @@ export default function EstimatePage() {
 function EstimatePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tr = useT();
   const editId = searchParams.get("edit");
   const prefillMacroId = searchParams.get("macroId");
   const prefillQty = searchParams.get("qty");
@@ -158,7 +160,7 @@ function EstimatePageInner() {
             </svg>
             Início
           </Link>
-          <p className="text-[15px] font-semibold">{editId ? (chantierName || "Chantier") : "Novo chantier"}</p>
+          <p className="text-[15px] font-semibold">{editId ? (chantierName || "Chantier") : tr("est.newChantier")}</p>
           {step === "detail" ? (
             <button
               onClick={() => setShowShareModal(true)}
@@ -244,7 +246,7 @@ function EstimatePageInner() {
               </div>
             </div>
             <button onClick={openSave} className="w-full btn-primary rounded-2xl py-3.5 text-[15px] font-semibold">
-              {editId ? "Atualizar chantier" : "Salvar chantier"}
+              {editId ? tr("est.updateChantier") : tr("est.saveChantier")}
             </button>
           </div>
         </div>
@@ -536,6 +538,7 @@ function Detail({
   const totalSurface = posts.filter(p => p.enabled !== false).reduce((s, p) => s + p.surface, 0);
   const alerts = useMemo(() => detectAlerts(chantierEst, config, qty || totalSurface), [chantierEst, config, qty, totalSurface]);
 
+  const tr = useT();
   return (
     <>
       <div className="px-6 pt-6 pb-4 fade-in">
@@ -543,7 +546,7 @@ function Detail({
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          {isEdit ? "início" : "voltar"}
+          {isEdit ? tr("nav.back").toLowerCase() : "voltar"}
         </button>
         <div className="flex items-center gap-3">
           <span className="text-3xl">{macro?.emoji || "🔧"}</span>
@@ -559,7 +562,7 @@ function Detail({
         <div className="card-outlined p-6">
           <div className="text-center mb-6">
             <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--color-muted)] font-medium mb-3">
-              {config.materialMode === "client" ? "Só mão de obra" : "Total com BDI"}
+              {config.materialMode === "client" ? tr("est.moOnly") : tr("est.totalWithBDI")}
             </p>
             <div className="flex items-baseline justify-center gap-1.5">
               <span className="text-[color:var(--color-muted)] text-xl font-medium">R$</span>
@@ -626,7 +629,7 @@ function Detail({
             <path d="M9 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z" />
             <path d="M19 3h-4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z" />
           </svg>
-          Comparar com orçamento recebido
+          {tr("est.compareOrcamento")}
         </button>
       </div>
 
@@ -655,7 +658,7 @@ function Detail({
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
-            <p className="text-[14px] font-semibold">Configuração do devis</p>
+            <p className="text-[14px] font-semibold">{tr("est.config")}</p>
             <span className="text-[11px] text-[color:var(--color-muted)] num">
               {config.modoContrato === "diaria"
                 ? `💵 R$${config.diariaOficial}/${config.diariaAjudante}`
@@ -795,7 +798,7 @@ function Detail({
       {/* Services detail */}
       <div className="px-6 mb-6 fade-in fade-in-4">
         <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-          Detalhamento por poste ({enabledCount}/{posts.length})
+          {tr("est.detailPerPoste")} ({enabledCount}/{posts.length})
         </p>
         <div className="space-y-3">
           {posts.map((post, idx) => {
@@ -945,7 +948,7 @@ function Detail({
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Adicionar outro serviço
+            {tr("est.addService")}
           </button>
         </div>
       </div>
@@ -953,7 +956,7 @@ function Detail({
       {/* Material list */}
       <div className="px-6 mb-8 fade-in fade-in-5">
         <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium mb-3 px-2">
-          Lista de material {config.materialMode === "client" ? "(cliente compra)" : "(empreiteiro fornece)"}
+          {tr("est.materialList")} {config.materialMode === "client" ? `(${tr("est.materialClient")})` : `(${tr("est.materialContractor")})`}
         </p>
         <div className="space-y-2.5">
           {chantierEst.estimates.map(e => {
@@ -1099,6 +1102,7 @@ function TeamQuickPicker({
   days: number;
   onChange: (patch: Partial<{ oficiais: number; ajudantes: number }>) => void;
 }) {
+  const tr = useT();
   const total = oficiais + ajudantes;
   const dailyCost = oficiais * diariaOficial + ajudantes * diariaAjudante;
   const totalMO = Math.round(days * dailyCost);
@@ -1113,9 +1117,9 @@ function TeamQuickPicker({
   return (
     <div className="px-6 mb-4 fade-in fade-in-2">
       <p className="text-[11px] uppercase tracking-wide text-[color:var(--color-accent)] font-semibold mb-2 px-1">
-        Sua equipe
+        {tr("est.yourTeam")}
         <span className="ml-2 normal-case tracking-normal font-normal text-[color:var(--color-muted)]">
-          · Ton équipe
+          · {tr("est.yourTeamSub")}
         </span>
       </p>
 
@@ -1146,7 +1150,7 @@ function TeamQuickPicker({
         {/* Steppers Oficiais / Ajudantes */}
         <div className="grid grid-cols-2 gap-3 pt-1">
           <TeamStepper
-            label="Oficiais"
+            label={tr("est.oficiais")}
             emoji="👷"
             value={oficiais}
             min={1}
@@ -1154,7 +1158,7 @@ function TeamQuickPicker({
             onChange={n => onChange({ oficiais: n })}
           />
           <TeamStepper
-            label="Ajudantes"
+            label={tr("est.ajudantes")}
             emoji="🧑‍🔧"
             value={ajudantes}
             min={0}
@@ -1167,15 +1171,15 @@ function TeamQuickPicker({
         <div className="pt-2 border-t border-[color:var(--color-line)] flex items-baseline justify-between">
           <div>
             <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
-              {total} pessoa{total > 1 ? "s" : ""} · {days} {days === 1 ? "dia" : "dias"}
+              {total} {total > 1 ? tr("common.persons") : tr("common.person")} · {days} {days === 1 ? tr("common.day") : tr("common.days")}
             </p>
             <p className="text-[11px] text-[color:var(--color-muted)] num mt-0.5">
-              R$ {dailyCost.toLocaleString("pt-BR")}/dia
+              R$ {dailyCost.toLocaleString("pt-BR")}/{tr("common.day")}
             </p>
           </div>
           <div className="text-right">
             <p className="text-[10px] uppercase tracking-wide text-[color:var(--color-muted)] font-medium">
-              MO total
+              {tr("est.moTotal")}
             </p>
             <p className="text-[16px] font-bold num">
               R$ {totalMO.toLocaleString("pt-BR")}
@@ -1229,6 +1233,7 @@ function TeamStepper({
 }
 
 function PhaseTimelineSection({ chantierEst }: { chantierEst: ReturnType<typeof estimateChantier> }) {
+  const tr = useT();
   const perPhase = useMemo(() => {
     const map: Record<PhaseId, { days: number; total: number; count: number }> = {
       preparo: { days: 0, total: 0, count: 0 },
@@ -1254,7 +1259,7 @@ function PhaseTimelineSection({ chantierEst }: { chantierEst: ReturnType<typeof 
   return (
     <div className="px-6 mb-6 fade-in fade-in-2">
       <div className="flex items-center justify-between mb-3 px-2">
-        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">Cronograma</p>
+        <p className="text-[13px] uppercase tracking-wide text-[color:var(--color-accent)] font-medium">{tr("est.cronograma")}</p>
         <p className="text-[11px] text-[color:var(--color-muted)] num">{Math.round(totalDays)} dias · {activePhases.length} fase{activePhases.length > 1 ? "s" : ""}</p>
       </div>
       <div className="card-outlined p-5">
@@ -1727,6 +1732,7 @@ function SaveChantierModal({
   onConfirm: () => void;
   isEdit: boolean;
 }) {
+  const tr = useT();
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-6">
       <div className="bg-white w-full max-w-sm rounded-3xl overflow-hidden">
@@ -1737,7 +1743,7 @@ function SaveChantierModal({
               <polyline points="17 21 17 13 7 13 7 21" />
             </svg>
           </div>
-          <p className="text-[17px] font-semibold">{isEdit ? "Atualizar chantier" : "Salvar chantier"}</p>
+          <p className="text-[17px] font-semibold">{isEdit ? tr("est.updateChantier") : tr("est.saveChantier")}</p>
           <p className="text-[13px] text-[color:var(--color-muted)] mt-1 num">
             {fmtBRL(midOf(total))} · faixa {fmtBRL(total[0])}–{fmtBRL(total[1])}
           </p>
@@ -1756,14 +1762,14 @@ function SaveChantierModal({
         </div>
         <div className="border-t border-[color:var(--color-line)] grid grid-cols-2">
           <button onClick={onCancel} className="py-3.5 text-[15px] text-[color:var(--color-muted)] hover:text-[color:var(--color-ink)] transition border-r border-[color:var(--color-line)]">
-            Cancelar
+            {tr("common.cancel")}
           </button>
           <button
             onClick={onConfirm}
             disabled={!name.trim()}
             className="py-3.5 text-[15px] font-semibold text-[color:var(--color-accent)] disabled:opacity-40 hover:bg-[color:var(--color-bg-2)] transition"
           >
-            {isEdit ? "Atualizar" : "Salvar"}
+            {isEdit ? tr("est.updateChantier").split(" ")[0] : tr("common.save")}
           </button>
         </div>
       </div>
