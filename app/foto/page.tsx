@@ -13,6 +13,7 @@ import { savePhoto, getDrafts, getPhoto, getPhotosByChantier, deletePhoto, appen
 import { compressImage, makeThumbnail, PLACEHOLDER_THUMB } from "@/lib/image_processing";
 import BeforeAfterSlider from "@/app/components/BeforeAfterSlider";
 import type { AfterStyle } from "@/lib/gemini_image";
+import { getCurrentLang, bcp47Of, onLangChange, type LangCode } from "@/lib/ui_lang";
 import { saveLearning, summarizeLearnings, countLearnings } from "@/lib/learnings";
 import { summarizePreferences, countPreferenceSignals } from "@/lib/preferences";
 import CreditsBadge from "@/app/components/CreditsBadge";
@@ -71,6 +72,7 @@ function FotoPageInner() {
   const [confirmedM2, setConfirmedM2] = useState<boolean>(false);
   const [chatOpen, setChatOpen] = useState<boolean>(false);
   const [userScope, setUserScope] = useState<string>("");
+  const [fotoUiLang, setFotoUiLang] = useState<LangCode>("pt");
   const [photoId, setPhotoId] = useState<string | null>(null);
   const [afterImage, setAfterImage] = useState<{ src: string; style: AfterStyle; mode: "gemini" | "demo" } | null>(null);
   const [afterLoading, setAfterLoading] = useState<AfterStyle | null>(null);
@@ -87,16 +89,19 @@ function FotoPageInner() {
     localStorage.removeItem("cq_last_photo_analysis");
     setDrafts(getDrafts());
     setLearningsCount(countLearnings());
+    setFotoUiLang(getCurrentLang());
     // Si openPhoto=X est présent en URL, on ouvre directement cette photo en step=result.
     // Utilisé par la home après une analyse hybride (photo depuis input home).
     if (openPhotoId) {
       const rec = getPhoto(openPhotoId);
       if (rec) openDraft(rec);
     }
-    return onPhotosChange(() => {
+    const offP = onPhotosChange(() => {
       setDrafts(getDrafts());
       setLearningsCount(countLearnings());
     });
+    const offL = onLangChange(setFotoUiLang);
+    return () => { offP(); offL(); };
     // openPhotoId est intentionnellement omis — on ne rouvre que lors du mount initial.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -456,6 +461,8 @@ function FotoPageInner() {
                 onChange={e => setUserScope(e.target.value.slice(0, 500))}
                 rows={3}
                 placeholder="Ex: só pintar as paredes. Ou: quanto tempo leva para 1 pessoa? Ou os dois."
+                lang={bcp47Of(fotoUiLang)}
+                inputMode="text"
                 className="w-full rounded-2xl border border-[color:var(--color-line)] bg-[color:var(--color-bg-2)] px-4 py-3 text-[14px] resize-none focus:outline-none focus:border-[color:var(--color-accent)]"
               />
               <span className="block text-[11px] text-[color:var(--color-muted)] mt-1">
@@ -1129,6 +1136,12 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Langue UI courante pour orienter le clavier + dictée iOS sur le textarea.
+  const [uiLang, setUiLang] = useState<LangCode>("pt");
+  useEffect(() => {
+    setUiLang(getCurrentLang());
+    return onLangChange(setUiLang);
+  }, []);
 
   // Contexte enrichi cross-photo : si la photo est rattachée à un chantier avec
   // d'autres photos, on injecte tout l'historique du chantier (fotos + conversas).
@@ -1284,6 +1297,8 @@ function ChatModal({ analysis, photoId, onClose }: { analysis: PhotoAnalysis; ph
             }}
             placeholder="Digite sua pergunta…"
             rows={1}
+            lang={bcp47Of(uiLang)}
+            inputMode="text"
             className="flex-1 resize-none rounded-2xl border border-[color:var(--color-line)] bg-transparent px-3 py-2 text-[14px] outline-none focus:border-[color:var(--color-accent)] transition max-h-32"
             style={{ minHeight: "40px" }}
           />

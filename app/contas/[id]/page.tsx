@@ -464,6 +464,8 @@ function FinalizeChantierModal({
             onChange={e => setNotes(e.target.value.slice(0, 300))}
             rows={2}
             placeholder="Ex: material Coral barato promoção · mão-de-obra Valternir + equipe"
+            lang={typeof document !== "undefined" ? document.documentElement.lang || "pt-BR" : "pt-BR"}
+            inputMode="text"
             className="w-full bg-[color:var(--color-bg-2)] rounded-xl px-4 py-2.5 text-[13px] outline-none resize-none placeholder:text-[color:var(--color-muted)] focus:bg-white focus:border focus:border-[color:var(--color-line-2)] transition"
           />
         </div>
